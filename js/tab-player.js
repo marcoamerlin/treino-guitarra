@@ -38,15 +38,15 @@ const bufferCaches = new WeakMap();
 function pluckBuffer(ctx, freq, seconds, damping) {
   let cache = bufferCaches.get(ctx);
   if (!cache) { cache = new Map(); bufferCaches.set(ctx, cache); }
-  const key = `${freq.toFixed(2)}|${seconds.toFixed(3)}|${damping}`;
+  const rate = ctx.sampleRate;
+  const period = Math.max(2, Math.round(rate / freq));
+  const key = `${period}|${seconds.toFixed(3)}|${damping}`;
   if (cache.has(key)) return cache.get(key);
 
-  const rate = ctx.sampleRate;
   const length = Math.max(1, Math.floor(rate * seconds));
   const buffer = ctx.createBuffer(1, length, rate);
   const out = buffer.getChannelData(0);
-  const period = Math.max(2, Math.round(rate / freq));
-  const random = noise(Math.round(freq * 100));
+  const random = noise(period);
   const ring = new Float32Array(period);
   for (let i = 0; i < period; i++) ring[i] = random();
   for (let i = 0; i < length; i++) {
@@ -54,8 +54,13 @@ function pluckBuffer(ctx, freq, seconds, damping) {
     out[i] = ring[j];
     ring[j] = damping * 0.5 * (ring[j] + ring[(j + 1) % period]);
   }
-  cache.set(key, buffer);
-  return buffer;
+  // A corda simulada só tem comprimento inteiro, então soa numa altura próxima da pedida.
+  // O filtro de média usa a amostra seguinte, o que encurta o atraso em meia amostra:
+  // a altura real é rate / (period - 0.5). Confirmado por medição (tests e offline render).
+  // Quem toca corrige a diferença pela velocidade de reprodução (playbackRate).
+  const result = { buffer, actual: rate / (period - 0.5) };
+  cache.set(key, result);
+  return result;
 }
 
 // Agenda todas as notas a partir de t0. Devolve a duração total em segundos.
@@ -96,17 +101,21 @@ export function scheduleTab(ctx, dest, spec, bpm, t0) {
       const length = bendTo != null ? 1.5 : muted ? step * 1.02 + 0.02 : Math.min(1.3, step * 3);
 
       const source = ctx.createBufferSource();
-      source.buffer = pluckBuffer(ctx, freq, length + 0.05, muted ? 0.982 : 0.996);
+      const pluck = pluckBuffer(ctx, freq, length + 0.05, muted ? 0.982 : 0.996);
+      source.buffer = pluck.buffer;
+      const tune = freq / pluck.actual; // ajuste fino para a afinação exata
       const env = ctx.createGain();
       env.gain.setValueAtTime(muted ? 0.5 : 1, start);
       env.gain.linearRampToValueAtTime(0.0001, start + length);
 
       if (bendTo != null) {
-        const ratio = 2 ** ((bendTo - fret) / 12);
-        source.playbackRate.setValueAtTime(1, start + 0.1);
-        source.playbackRate.linearRampToValueAtTime(ratio, start + 0.4);
-        source.playbackRate.setValueAtTime(ratio, start + 0.8);
-        source.playbackRate.linearRampToValueAtTime(1, start + 1.1);
+        const bent = tune * 2 ** ((bendTo - fret) / 12);
+        source.playbackRate.setValueAtTime(tune, start + 0.1);
+        source.playbackRate.linearRampToValueAtTime(bent, start + 0.4);
+        source.playbackRate.setValueAtTime(bent, start + 0.8);
+        source.playbackRate.linearRampToValueAtTime(tune, start + 1.1);
+      } else {
+        source.playbackRate.value = tune;
       }
 
       source.connect(env);
