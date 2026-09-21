@@ -140,3 +140,15 @@ test('exercícios com metrônomo têm meta maior que o começo', () => {
     assert.ok(ex.bpm.goal > ex.bpm.start, `${id}: meta menor que o início`);
   });
 });
+
+test('o service worker guarda offline todo arquivo .js do app (js/ e js/data/)', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const root = new URL('../', import.meta.url);
+  const sw = readFileSync(new URL('sw.js', root), 'utf8');
+  const files = [
+    ...readdirSync(new URL('js/', root)).filter((f) => f.endsWith('.js')).map((f) => 'js/' + f),
+    ...readdirSync(new URL('js/data/', root)).filter((f) => f.endsWith('.js')).map((f) => 'js/data/' + f),
+  ];
+  const missing = files.filter((f) => !sw.includes("'" + f + "'"));
+  assert.deepEqual(missing, [], 'faltam no SHELL do sw.js: ' + missing.join(', '));
+});
