@@ -1,0 +1,9 @@
+{
+  "name": "treino-guitarra",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/merge.test.mjs tests/sync.test.mjs"
+  }
+}

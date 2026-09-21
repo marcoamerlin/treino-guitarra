@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Treino de Guitarra</title>
+<meta name="theme-color" content="#1B1613">
+<meta name="description" content="Painel de treino diário de guitarra: exercícios, metrônomo e evolução de velocidade.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Guitarra">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="faceplate">
+    <div class="faceplate-top">
+      <div class="brand">Painel de Treino
+        <small>Guitarra · rotina diária · rock &amp; técnica</small>
+      </div>
+      <div class="streak-pill">
+        <div class="streak-dot" id="streakDot"></div>
+        <div>
+          <div class="streak-num" id="streakNum">0</div>
+          <div class="streak-label">dias seguidos</div>
+        </div>
+      </div>
+    </div>
+    <div class="faceplate-actions">
+      <button class="metro-pill" id="metroBtn" type="button" aria-label="Abrir metrônomo">
+        <span class="beat-led"></span>
+        <span>Metrônomo</span>
+        <span class="metro-bpm"><span id="metroBpm">90</span> BPM</span>
+      </button>
+      <button class="sync-pill" id="syncBtn" type="button" aria-label="Conta e sincronização">
+        <span class="sync-led"></span>
+        <span id="syncLabel">Entrar</span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="day-tabs" id="dayTabs" aria-label="Dias da semana"></nav>
+
+  <main id="dayContent"></main>
+
+  <footer class="hint" id="footerHint"></footer>
+</div>
+
+<div class="sheet-overlay" id="sheet">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <button class="sheet-close" id="sheetClose" type="button" aria-label="Fechar">✕</button>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
