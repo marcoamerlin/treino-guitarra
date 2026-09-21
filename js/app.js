@@ -163,13 +163,13 @@ function metronomeView() {
 // ---- Conta e sincronização ------------------------------------------------------------
 
 const SYNC_LABELS = {
-  disabled: 'Só neste aparelho',
+  disabled: 'Só local',
   'signed-out': 'Entrar',
   idle: 'Conectado',
   syncing: 'Sincronizando…',
   ok: 'Sincronizado',
   offline: 'Sem conexão',
-  error: 'Erro ao sincronizar',
+  error: 'Erro',
 };
 
 const clock = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -557,6 +557,7 @@ function renderDay() {
 
 function updateMetroPill() {
   $('#metroBpm').textContent = metronome.bpm;
+  $('#metroBtn').setAttribute('aria-label', `Abrir metrônomo, ${metronome.bpm} BPM`);
   $('#metroBtn').classList.toggle('running', metronome.running);
 }
 
