@@ -223,6 +223,20 @@ header.faceplate::before {
 }
 
 .tab-label { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); letter-spacing: 0.4px; margin: 12px 0 5px; }
+.tab-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 6px 10px; margin: 12px 0 6px; }
+.tab-head .tab-label { margin: 0; flex: 1 1 auto; }
+.listen-row { display: flex; gap: 6px; }
+.listen-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  background: var(--lcd-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  color: var(--brass);
+  white-space: nowrap;
+}
+.listen-btn.on { border-color: var(--led-green); color: var(--led-green); }
 .tab-readout {
   background: var(--lcd-bg);
   border: 1px solid var(--border);

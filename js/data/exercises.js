@@ -27,36 +27,43 @@ const BACKING_TRACK = {
 
 const alternate = (n) => Array.from({ length: n }, (_, i) => (i % 2 ? '^' : 'v'));
 
+// Uma tablatura: o texto para ler + os dados (cols) que o botão "Ouvir" toca.
+const makeTab = (label, cols, layout, play) => ({ label, text: buildTab(cols, layout), play: { cols, ...play } });
+
 // Cromático 1-2-3-4 nas casas 5–8, corda a corda (Mi, Lá e Ré; repita nas outras).
 const chromaCols = [5, 4, 3].flatMap((s) => [5, 6, 7, 8].map((fret) => [[s, fret]]));
-const chromaTab = buildTab(chromaCols, { pick: alternate(chromaCols.length) });
+const chromaTab = makeTab('Cordas Mi, Lá e Ré (repita nas outras três)', chromaCols,
+  { pick: alternate(chromaCols.length) }, { perBeat: 1, voice: 'clean' });
 
 // Pentatônica de Lá menor, caixa 1, de baixo para cima: [corda, casa].
 const box1 = [
   [5, 5], [5, 8], [4, 5], [4, 7], [3, 5], [3, 7],
   [2, 5], [2, 7], [1, 5], [1, 8], [0, 5], [0, 8],
 ];
-const box1Up = buildTab(box1.map((n) => [n]), { pick: alternate(12) });
-const box1Down = buildTab([...box1].reverse().map((n) => [n]), { pick: alternate(12) });
+const box1UpTab = makeTab('Subindo', box1.map((n) => [n]),
+  { pick: alternate(12) }, { perBeat: 2, voice: 'clean' });
+const box1DownTab = makeTab('Descendo', [...box1].reverse().map((n) => [n]),
+  { pick: alternate(12) }, { perBeat: 2, voice: 'clean' });
 
 // Grupos de 3 notas: 1-2-3, 2-3-4, 3-4-5, 4-5-6 (cada grupo começa uma nota acima).
 const groups3 = [0, 1, 2, 3].flatMap((i) => box1.slice(i, i + 3).map((n) => [n]));
-const groups3Tab = buildTab(groups3, { pick: alternate(groups3.length) });
+const groups3Tab = makeTab('Quatro primeiros grupos (continue até o topo da caixa)', groups3,
+  { pick: alternate(groups3.length) }, { perBeat: 2, voice: 'clean' });
 
 // Riff em Lá: colcheias de 4 tempos, palm mute. Dois compassos que se repetem.
 const COUNT = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
 const riffChords = ['A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'D5', 'D5', 'A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'E5', 'E5'];
-const riff1Tab = buildTab(riffChords.map((id) => chordCol(id)), {
-  bar: 8, count: COUNT, pick: riffChords.map(() => 'v'),
-});
-const riff2Cols = riffChords.map((id, i) => (i % 8 === 3 ? null : chordCol(id)));
-const riff2Tab = buildTab(riff2Cols, {
-  bar: 8, count: COUNT, pick: riff2Cols.map((c) => (c ? 'v' : ' ')),
-});
+const riffCols = riffChords.map((id) => chordCol(id));
+const riff1Tab = makeTab('2 compassos — repita', riffCols,
+  { bar: 8, count: COUNT, pick: riffChords.map(() => 'v') }, { perBeat: 2, voice: 'muted', repeat: 2 });
+const riff2Cols = riffCols.map((col, i) => (i % 8 === 3 ? null : col));
+const riff2Tab = makeTab('2 compassos — repita', riff2Cols,
+  { bar: 8, count: COUNT, pick: riff2Cols.map((c) => (c ? 'v' : ' ')) }, { perBeat: 2, voice: 'muted', repeat: 2 });
 
 // Frase de rock com bend na caixa 1.
 const phraseCols = [[[0, 8]], [[0, 5]], [[1, 8]], [[1, 5]], [[2, '7b9r7']]];
-const phraseTab = buildTab(phraseCols, { pick: ['v', '^', 'v', '^', 'v'] });
+const phraseTab = makeTab('Frase', phraseCols,
+  { pick: ['v', '^', 'v', '^', 'v'] }, { perBeat: 2, voice: 'clean' });
 
 // ---- Exercícios ------------------------------------------------------------
 
@@ -67,7 +74,7 @@ export const EXERCISES = {
     cat: 'aquecimento',
     min: 10,
     bpm: { start: 60, goal: 90 },
-    tabs: [{ label: 'Cordas Mi, Lá e Ré (repita nas outras três)', text: chromaTab }],
+    tabs: [chromaTab],
     steps: [
       'Metrônomo em 60 BPM, <strong>uma nota por clique</strong>.',
       'Dedo 1 na casa 5, dedo 2 na 6, dedo 3 na 7, dedo 4 na 8 — um dedo por casa, sem mover a mão.',
@@ -86,10 +93,7 @@ export const EXERCISES = {
     cat: 'tecnica',
     min: 12,
     bpm: { start: 70, goal: 120 },
-    tabs: [
-      { label: 'Subindo', text: box1Up },
-      { label: 'Descendo', text: box1Down },
-    ],
+    tabs: [box1UpTab, box1DownTab],
     steps: [
       'Mão na casa 5. Dedo 1 nas notas da casa 5, dedo 3 nas da casa 7 e dedo 4 nas da casa 8.',
       'Suba tocando <strong>2 notas por corda</strong>, da Mi grave à Mi fina, com palhetada alternada.',
@@ -108,7 +112,7 @@ export const EXERCISES = {
     cat: 'tecnica',
     min: 8,
     bpm: { start: 60, goal: 100 },
-    tabs: [{ label: 'Quatro primeiros grupos (continue até o topo da caixa)', text: groups3Tab }],
+    tabs: [groups3Tab],
     steps: [
       'Mesma caixa, mas em <strong>grupos de 3 notas</strong>: 1-2-3, 2-3-4, 3-4-5... cada grupo começa uma nota acima do anterior.',
       'A palhetada continua alternada sem parar. Como o grupo tem 3 notas, o começo de cada grupo troca de direção — é isso que treina o controle.',
@@ -124,7 +128,7 @@ export const EXERCISES = {
     min: 8,
     bpm: { start: 70, goal: 110 },
     chords: ['A5', 'C5', 'D5', 'E5'],
-    tabs: [{ label: '2 compassos — repita', text: riff1Tab }],
+    tabs: [riff1Tab],
     steps: [
       'Antes, aprenda os quatro acordes (toque nos botões de acorde, logo abaixo da tablatura, para ver o diagrama).',
       '<strong>Palm mute:</strong> apoie a lateral da mão direita perto do cavalete, encostando de leve nas cordas.',
@@ -141,7 +145,7 @@ export const EXERCISES = {
     min: 7,
     bpm: { start: 70, goal: 110 },
     chords: ['A5', 'C5', 'D5', 'E5'],
-    tabs: [{ label: '2 compassos — repita', text: riff2Tab }],
+    tabs: [riff2Tab],
     steps: [
       'Igual ao Riff 1, mas a <strong>4ª colcheia</strong> de cada compasso (o “e” depois do 2) fica em silêncio.',
       'Aperte o palm mute ou simplesmente não palhete. O que importa é a pausa cair certinho no tempo.',
@@ -155,7 +159,7 @@ export const EXERCISES = {
     subtitle: 'Caixa 1 e bend de 1 tom, sobre uma base em Lá menor',
     cat: 'aplicacao',
     min: 10,
-    tabs: [{ label: 'Frase', text: phraseTab }],
+    tabs: [phraseTab],
     links: [BACKING_TRACK],
     steps: [
       'Toque 8–5 na corda Mi fina e 8–5 na corda Si, com palhetada alternada.',
@@ -174,7 +178,7 @@ export const EXERCISES = {
     min: 5,
     bpm: { start: 90, goal: 120 },
     chords: ['A5', 'C5', 'D5', 'E5'],
-    tabs: [{ label: 'Mesmo riff do Riff 1', text: riff1Tab }],
+    tabs: [{ ...riff1Tab, label: 'Mesmo riff do Riff 1' }],
     steps: [
       'Use o riff como exercício rítmico: palm mute firme, sempre para baixo.',
       'Mão direita encostada perto do cavalete, para o som ficar pesado e curto.',

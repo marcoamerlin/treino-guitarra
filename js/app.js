@@ -4,6 +4,7 @@ import { CHORDS, chordCol } from './data/chords.js';
 import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
 import { metronome } from './metronome.js';
+import { tabPlayer } from './tab-player.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 
@@ -304,14 +305,54 @@ function speedBox(id, ex) {
       if (event && metronome.running) metronome.setBpm(bpm);
     } else if ('metro' in btn.dataset) {
       if (metronome.running) metronome.stop();
-      else { metronome.setBpm(store.getSpeed(id, cfg).bpm); metronome.start(); }
+      else { tabPlayer.stop(); metronome.setBpm(store.getSpeed(id, cfg).bpm); metronome.start(); }
     }
-    update();
+    pageRedrawers.forEach((fn) => fn()); // inclui os botões "Ouvir", que mostram o BPM atual
   });
 
   pageRedrawers.push(update);
   update();
   return box;
+}
+
+// ---- Ouvir a tablatura ----------------------------------------------------------------
+
+// "Ouvir" toca na sua velocidade atual; "Meta" toca na velocidade que você quer alcançar.
+function listenButtons(id, ex, tab) {
+  const wrap = el('div', 'listen-row');
+  const kinds = ex.bpm ? ['now', 'goal'] : ['now'];
+  const bpmFor = (kind) => (kind === 'goal' ? ex.bpm.goal : ex.bpm ? store.getSpeed(id, ex.bpm).bpm : 80);
+
+  const buttons = kinds.map((kind) => {
+    const button = el('button', 'listen-btn');
+    button.dataset.kind = kind;
+    wrap.appendChild(button);
+    return button;
+  });
+
+  const update = () => {
+    buttons.forEach((button) => {
+      const kind = button.dataset.kind;
+      const bpm = bpmFor(kind);
+      const on = tabPlayer.isPlaying(tab, bpm);
+      button.classList.toggle('on', on);
+      button.textContent = on ? '■ Parar'
+        : `▶ ${kind === 'goal' ? 'Meta' : 'Ouvir'}${ex.bpm ? ` · ${bpm}` : ''}`;
+    });
+  };
+
+  wrap.addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (!button) return;
+    const bpm = bpmFor(button.dataset.kind);
+    if (tabPlayer.isPlaying(tab, bpm)) { tabPlayer.stop(); return; }
+    metronome.stop();
+    tabPlayer.play(tab, bpm);
+  });
+
+  pageRedrawers.push(update);
+  update();
+  return wrap;
 }
 
 // ---- Exercício (cartão) ---------------------------------------------------------
@@ -325,7 +366,10 @@ function exerciseBody(id, ex) {
 
   if (ex.tabs && ex.tabs.length) {
     ex.tabs.forEach((tab) => {
-      body.appendChild(el('div', 'tab-label', tab.label));
+      const head = el('div', 'tab-head');
+      head.appendChild(el('div', 'tab-label', tab.label));
+      if (tab.play) head.appendChild(listenButtons(id, ex, tab));
+      body.appendChild(head);
       const readout = el('div', 'tab-readout');
       const pre = el('pre');
       pre.textContent = tab.text;
@@ -587,7 +631,9 @@ metronome.bpm = store.getPref('metroBpm', 90);
 metronome.beats = store.getPref('metroBeats', 4);
 metronome.subdivide = store.getPref('metroSub', false);
 
+tabPlayer.onChange(() => pageRedrawers.forEach((fn) => fn()));
 metronome.on('change', () => {
+  if (metronome.running) tabPlayer.stop(); // não tocam juntos
   updateMetroPill();
   pageRedrawers.forEach((fn) => fn());
   sheetRedrawers.forEach((fn) => fn());
