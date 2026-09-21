@@ -215,7 +215,16 @@ function accountView() {
         '<p class="tip">Sair não apaga o treino guardado neste aparelho, só desliga a sincronização.</p>';
       root.querySelector('strong').textContent = s.email;
       root.querySelector('.sync-info').textContent = info;
-      root.querySelector('[data-sync]').addEventListener('click', () => sync.syncNow());
+      root.querySelector('[data-sync]').addEventListener('click', async () => {
+        await sync.syncNow();
+        // Deu certo: deixa ver a confirmação por um instante e fecha. Deu erro: fica aberta com o motivo.
+        if (sync.getState().status !== 'ok') return;
+        setTimeout(() => {
+          if (!root.isConnected) return; // a folha já foi fechada ou trocada
+          closeSheet();
+          toast('Sincronizado.');
+        }, 1000);
+      });
       root.querySelector('[data-out]').addEventListener('click', () => sync.signOut());
     } else {
       root.innerHTML =
