@@ -18,8 +18,9 @@ No celular, abrir o endereço no Chrome (Android) ou Safari (iPhone) e usar
 
 ## 2. Supabase
 
-1. Em https://supabase.com: New project (nome `treino-guitarra`, região **South America (São Paulo)**,
-   guarde a senha do banco). Plano gratuito.
+1. Em https://supabase.com: New project (nome `treino-guitarra`, região **South America (São Paulo)**
+   ou "Americas", guarde a senha do banco). Plano gratuito. Em **Security**: deixar **Enable Data API**
+   marcado, **desmarcar** "Automatically expose new tables" e **marcar** "Enable automatic RLS".
 2. **SQL Editor** → colar todo o conteúdo de `supabase/schema.sql` → Run.
 3. **Authentication → Users → Add user → Create new user**: e-mail e senha, marcando
    **Auto Confirm User**. Esta é a sua conta.

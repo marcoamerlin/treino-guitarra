@@ -14,6 +14,13 @@ create table if not exists public.user_data (
 -- Segurança por linha: cada usuário só enxerga e altera a própria linha.
 alter table public.user_data enable row level security;
 
+-- Permissões da API. Ao criar o projeto, "Automatically expose new tables" deve ficar DESMARCADO
+-- (nenhuma tabela nova nasce acessível). Aqui liberamos só o necessário, só para quem está logado.
+-- Funciona igual se a opção tiver ficado marcada: o revoke tira o acesso do papel anônimo.
+revoke all on public.user_data from anon;
+grant usage on schema public to authenticated;
+grant select, insert, update on public.user_data to authenticated;
+
 drop policy if exists "user_data_select_own" on public.user_data;
 drop policy if exists "user_data_insert_own" on public.user_data;
 drop policy if exists "user_data_update_own" on public.user_data;
