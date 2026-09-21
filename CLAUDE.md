@@ -20,8 +20,10 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/data/chords.js`: banco de acordes (diagrama SVG gerado a partir de `frets`/`fingers`).
 - `js/data/plans.js`: plano padrão de cada dia (lista de `{ex, min}` referindo ids do banco).
 - `js/tab.js`: `buildTab()` gera a tablatura; **nunca escrever tablatura à mão** (desalinha).
-  Em `exercises.js`, `makeTab()` guarda o texto e as notas (`play`), e o botão "Ouvir" toca essas notas
-  via `js/tab-player.js` (áudio sintetizado, sem arquivos). Fret `'7b9r7'` = bend de 7 até 9 e solta.
+  Em `exercises.js`, `makeTab()` guarda o texto e as notas (`play`); o botão "Ouvir" toca essas notas via
+  `js/tab-player.js`. Som: gravações reais de guitarra em `audio/guitar-<timbre>/<nota MIDI>.mp3` (Mi2 a Mi5,
+  FluidR3_GM, CC BY 3.0, ver `audio/CREDITS.md`; gerar com `tools/extract-samples.mjs`); se uma nota falhar,
+  cai no sintetizador Karplus-Strong. Fret `'7b9r7'` = bend de 7 até 9 e solta.
 - `js/store.js`: única porta de persistência (localStorage). Todo registro sincronizado leva carimbo de tempo.
 - `js/merge.js`: combina dados de dois aparelhos (funções puras). `js/sync-core.js`: motor de sync com
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga

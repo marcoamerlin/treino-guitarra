@@ -336,7 +336,7 @@ function listenButtons(id, ex, tab) {
       const bpm = bpmFor(kind);
       const on = tabPlayer.isPlaying(tab, bpm);
       button.classList.toggle('on', on);
-      button.textContent = on ? '■ Parar'
+      button.textContent = on ? (tabPlayer.isLoading(tab, bpm) ? '… carregando' : '■ Parar')
         : `▶ ${kind === 'goal' ? 'Meta' : 'Ouvir'}${ex.bpm ? ` · ${bpm}` : ''}`;
     });
   };

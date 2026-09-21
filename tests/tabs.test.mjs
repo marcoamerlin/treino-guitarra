@@ -68,3 +68,28 @@ test('todo dia da semana cita só exercícios que existem no banco e soma 60 min
     assert.equal(total, 60, `${key} soma ${total} min`);
   });
 });
+
+test('toda nota de toda tablatura tocável tem gravação de guitarra no projeto', async () => {
+  const { existsSync } = await import('node:fs');
+  const { notesOf } = await import('../js/tab-player.js');
+  const root = new URL('../', import.meta.url);
+  allTabs.filter(({ tab }) => tab.play).forEach(({ id, tab }) => {
+    notesOf(tab.play.cols).forEach((midi) => {
+      const file = new URL(`audio/guitar-${tab.play.voice}/${midi}.mp3`, root);
+      assert.ok(existsSync(file), `${id}: falta a gravação da nota MIDI ${midi} (${tab.play.voice})`);
+    });
+  });
+});
+
+test('o service worker guarda offline exatamente as gravações que existem (MIDI 40 a 76)', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const root = new URL('../', import.meta.url);
+  const sw = readFileSync(new URL('sw.js', root), 'utf8');
+  assert.match(sw, /length: 37/);
+  for (const voice of ['clean', 'muted']) {
+    const files = readdirSync(new URL(`audio/guitar-${voice}/`, root)).map((f) => parseInt(f, 10)).sort((a, b) => a - b);
+    assert.equal(files.length, 37);
+    assert.equal(files[0], 40);
+    assert.equal(files[36], 76);
+  }
+});

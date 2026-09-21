@@ -412,6 +412,7 @@ textarea.notes::placeholder { color: var(--text-faint); }
 .notes-label { font-size: 12px; color: var(--text-faint); font-family: var(--font-mono); letter-spacing: 0.3px; margin-bottom: 6px; display: block; }
 .notes-block { background: var(--panel); border: 1px solid var(--border-soft); border-radius: 9px; padding: 13px 14px 14px; margin-top: 10px; }
 
+footer.hint .credit { font-size: 11px; opacity: 0.8; }
 footer.hint { text-align: center; color: var(--text-faint); font-size: 12px; margin-top: 18px; line-height: 1.6; }
 
 /* ---- Folha (bottom sheet) ---- */

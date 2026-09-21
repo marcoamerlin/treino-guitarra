@@ -2,7 +2,7 @@
 // Arquivos do app: rede primeiro (pega atualizações), cache como reserva.
 // Fontes do Google: cache na primeira visita, para aparecerem offline depois.
 
-const CACHE = 'guitarra-v3';
+const CACHE = 'guitarra-v4';
 const SHELL = [
   './',
   'index.html',
@@ -26,8 +26,11 @@ const SHELL = [
   'icons/apple-touch-icon.png',
 ];
 
+// Gravações de guitarra: notas MIDI 40 a 76 de cada timbre (ver audio/CREDITS.md).
+const AUDIO = ['clean', 'muted'].flatMap((voice) => Array.from({ length: 37 }, (_, i) => `audio/guitar-${voice}/${40 + i}.mp3`));
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([...SHELL, ...AUDIO])));
   self.skipWaiting();
 });
 
@@ -43,6 +46,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+
+  // Sons nunca mudam: cache primeiro, rede só se faltar.
+  if (url.origin === self.location.origin && url.pathname.includes('/audio/')) {
+    event.respondWith(caches.match(request).then((hit) => hit || fetch(request).then((response) => {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(request, copy));
+      return response;
+    })));
+    return;
+  }
 
   if (url.origin === self.location.origin) {
     event.respondWith(

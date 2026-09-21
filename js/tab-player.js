@@ -1,6 +1,8 @@
-// Toca uma tablatura com som sintetizado, para ouvir como o exercício deve soar.
-// Cada nota é uma corda dedilhada simulada (Karplus-Strong); o timbre "muted" passa por
-// distorção e decai rápido, imitando power chord com palm mute. Não usa arquivos de áudio.
+// Toca uma tablatura para ouvir como o exercício deve soar.
+//
+// Som principal: gravações reais de guitarra (audio/guitar-*/<nota MIDI>.mp3, banco FluidR3_GM,
+// ver audio/CREDITS.md). Se uma nota não carregar, cai no sintetizador (corda dedilhada simulada
+// por Karplus-Strong, com distorção no timbre "muted"), que também serve de reserva offline.
 //
 // spec: { cols, perBeat, voice: 'muted' | 'clean', repeat? }  (cols no formato de tab.js)
 //   perBeat: colunas por tempo (2 = colcheias). Fret '7b9r7' = bend de 7 até 9 e solta.
@@ -13,6 +15,87 @@ export function parseFret(raw) {
   if (bend) return { fret: Number(bend[1]), bendTo: Number(bend[2]) };
   return { fret: parseInt(raw, 10), bendTo: null };
 }
+
+export const midiOf = (string, rawFret) => OPEN_MIDI[string] + parseFret(rawFret).fret;
+
+export function notesOf(cols) {
+  const notes = new Set();
+  cols.forEach((col) => (col || []).forEach(([string, fret]) => notes.add(midiOf(string, fret))));
+  return notes;
+}
+
+// ---- Amostras de guitarra ---------------------------------------------------------------
+
+const SAMPLE_DIR = new URL('../audio/', import.meta.url);
+const TARGET_PEAK = 0.5; // as gravações vêm baixas e com nível diferente por nota: igualar
+const sampleCaches = new WeakMap();
+
+function loadSample(ctx, voice, midi) {
+  let cache = sampleCaches.get(ctx);
+  if (!cache) { cache = new Map(); sampleCaches.set(ctx, cache); }
+  const key = `${voice}/${midi}`;
+  if (!cache.has(key)) {
+    cache.set(key, fetch(new URL(`guitar-${voice}/${midi}.mp3`, SAMPLE_DIR))
+      .then((response) => {
+        if (!response.ok) throw new Error(`${key}: ${response.status}`);
+        return response.arrayBuffer();
+      })
+      .then((data) => ctx.decodeAudioData(data))
+      .then((buffer) => {
+        let peak = 0;
+        for (let c = 0; c < buffer.numberOfChannels; c++) {
+          const data = buffer.getChannelData(c);
+          for (let i = 0; i < data.length; i++) peak = Math.max(peak, Math.abs(data[i]));
+        }
+        return { buffer, norm: peak > 0 ? TARGET_PEAK / peak : 1 };
+      })
+      .catch((error) => { cache.delete(key); throw error; }));
+  }
+  return cache.get(key);
+}
+
+// Carrega as notas pedidas. Nota que falhar simplesmente fica de fora (cai no sintetizador).
+export async function loadSamples(ctx, voice, midis) {
+  const samples = new Map();
+  await Promise.all([...midis].map(async (midi) => {
+    try { samples.set(midi, await loadSample(ctx, voice, midi)); } catch (e) { /* usa o sintetizador */ }
+  }));
+  return samples;
+}
+
+// Saída com nível de música: compressor, ganho e limitador para nunca estourar.
+export function createOutput(ctx) {
+  const input = ctx.createGain();
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -20;
+  compressor.knee.value = 10;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.005;
+  compressor.release.value = 0.2;
+
+  const makeup = ctx.createGain();
+  makeup.gain.value = 1.3;
+
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -5;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.05;
+
+  const master = ctx.createGain();
+  master.gain.value = 0.9; // margem final: o limitador sozinho ainda deixa passar picos curtos
+
+  input.connect(compressor);
+  compressor.connect(makeup);
+  makeup.connect(limiter);
+  limiter.connect(master);
+  master.connect(ctx.destination);
+  return { input, master };
+}
+
+// ---- Sintetizador de reserva -----------------------------------------------------------------
 
 const CURVE = (() => {
   const size = 1024;
@@ -56,17 +139,20 @@ function pluckBuffer(ctx, freq, seconds, damping) {
   }
   // A corda simulada só tem comprimento inteiro, então soa numa altura próxima da pedida.
   // O filtro de média usa a amostra seguinte, o que encurta o atraso em meia amostra:
-  // a altura real é rate / (period - 0.5). Confirmado por medição (tests e offline render).
-  // Quem toca corrige a diferença pela velocidade de reprodução (playbackRate).
+  // a altura real é rate / (period - 0.5). Quem toca corrige pela velocidade (playbackRate).
   const result = { buffer, actual: rate / (period - 0.5) };
   cache.set(key, result);
   return result;
 }
 
-// Agenda todas as notas a partir de t0. Devolve a duração total em segundos.
-export function scheduleTab(ctx, dest, spec, bpm, t0) {
+// ---- Agendamento --------------------------------------------------------------------------------
+
+// Agenda todas as notas a partir de t0. `samples` (Map nota → amostra) é opcional: sem ele,
+// tudo sai do sintetizador. Devolve a duração total em segundos.
+export function scheduleTab(ctx, dest, spec, bpm, t0, samples = null) {
   const step = 60 / bpm / spec.perBeat;
   const muted = spec.voice === 'muted';
+  const useSamples = Boolean(samples && samples.size);
   const cols = [];
   for (let r = 0; r < (spec.repeat || 1); r++) cols.push(...spec.cols);
 
@@ -76,30 +162,64 @@ export function scheduleTab(ctx, dest, spec, bpm, t0) {
     const t = t0 + i * step;
 
     const bus = ctx.createGain();
-    bus.gain.value = muted ? 1 : 0.6 / Math.sqrt(col.length);
-    let node = bus;
-    if (muted) {
-      const shaper = ctx.createWaveShaper();
-      shaper.curve = CURVE;
-      shaper.oversample = '2x';
-      node.connect(shaper);
-      node = shaper;
+    let tail = bus;
+    if (useSamples) {
+      bus.gain.value = 0.8;
+    } else {
+      bus.gain.value = muted ? 1 : 0.6 / Math.sqrt(col.length);
+      if (muted) {
+        const shaper = ctx.createWaveShaper();
+        shaper.curve = CURVE;
+        shaper.oversample = '2x';
+        tail.connect(shaper);
+        tail = shaper;
+      }
+      const lowpass = ctx.createBiquadFilter();
+      lowpass.type = 'lowpass';
+      lowpass.frequency.value = muted ? 2200 : 4500;
+      tail.connect(lowpass);
+      const out = ctx.createGain();
+      out.gain.value = muted ? 0.65 : 1;
+      lowpass.connect(out);
+      tail = out;
     }
-    const lowpass = ctx.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.value = muted ? 2200 : 4500;
-    node.connect(lowpass);
-    const out = ctx.createGain();
-    out.gain.value = muted ? 0.65 : 1;
-    lowpass.connect(out);
-    out.connect(dest);
+    tail.connect(dest);
 
     col.forEach(([string, rawFret], n) => {
       const { fret, bendTo } = parseFret(rawFret);
-      const freq = midiFreq(OPEN_MIDI[string] + fret);
+      const midi = OPEN_MIDI[string] + fret;
       const start = t + n * 0.007; // cordas do acorde entram em sequência, como uma palhetada
-      const length = bendTo != null ? 1.5 : muted ? step * 1.02 + 0.02 : Math.min(1.3, step * 3);
+      const sample = useSamples ? samples.get(midi) : null;
 
+      // Soma-se o efeito de bend ao playbackRate de quem estiver tocando (amostra ou corda simulada).
+      const bendRate = (rate, param) => {
+        const bent = rate * 2 ** ((bendTo - fret) / 12);
+        param.setValueAtTime(rate, start + 0.1);
+        param.linearRampToValueAtTime(bent, start + 0.4);
+        param.setValueAtTime(bent, start + 0.8);
+        param.linearRampToValueAtTime(rate, start + 1.1);
+      };
+
+      if (sample) {
+        // Abafado (palm mute): a nota termina um pouco antes da próxima batida, o que deixa as pausas limpas.
+        const length = bendTo != null ? 1.5 : muted ? step * 0.92 : Math.min(2.4, step * 4);
+        const source = ctx.createBufferSource();
+        source.buffer = sample.buffer;
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(sample.norm, start);
+        env.gain.setValueAtTime(sample.norm, start + Math.max(0, length - 0.03));
+        env.gain.linearRampToValueAtTime(0.0001, start + length); // corta a nota sem estalo
+        if (bendTo != null) bendRate(1, source.playbackRate);
+        source.connect(env);
+        env.connect(bus);
+        source.start(start);
+        source.stop(start + length + 0.02);
+        end = Math.max(end, start + length - t0);
+        return;
+      }
+
+      const freq = midiFreq(midi);
+      const length = bendTo != null ? 1.5 : muted ? step * 1.02 + 0.02 : Math.min(1.3, step * 3);
       const source = ctx.createBufferSource();
       const pluck = pluckBuffer(ctx, freq, length + 0.05, muted ? 0.982 : 0.996);
       source.buffer = pluck.buffer;
@@ -107,17 +227,8 @@ export function scheduleTab(ctx, dest, spec, bpm, t0) {
       const env = ctx.createGain();
       env.gain.setValueAtTime(muted ? 0.5 : 1, start);
       env.gain.linearRampToValueAtTime(0.0001, start + length);
-
-      if (bendTo != null) {
-        const bent = tune * 2 ** ((bendTo - fret) / 12);
-        source.playbackRate.setValueAtTime(tune, start + 0.1);
-        source.playbackRate.linearRampToValueAtTime(bent, start + 0.4);
-        source.playbackRate.setValueAtTime(bent, start + 0.8);
-        source.playbackRate.linearRampToValueAtTime(tune, start + 1.1);
-      } else {
-        source.playbackRate.value = tune;
-      }
-
+      if (bendTo != null) bendRate(tune, source.playbackRate);
+      else source.playbackRate.value = tune;
       source.connect(env);
       env.connect(bus);
       source.start(start);
@@ -128,36 +239,50 @@ export function scheduleTab(ctx, dest, spec, bpm, t0) {
   return end + 0.1;
 }
 
+// ---- Player -------------------------------------------------------------------------------------------
+
 class TabPlayer {
   constructor() {
     this.ctx = null;
     this.master = null;
     this.timer = null;
-    this.current = null; // { tab, bpm }
+    this.token = 0;      // invalida um play() que ainda está carregando amostras
+    this.current = null; // { tab, bpm, loading }
     this.listeners = new Set();
   }
 
   onChange(fn) { this.listeners.add(fn); }
   emit() { this.listeners.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } }); }
   isPlaying(tab, bpm) { return Boolean(this.current && this.current.tab === tab && this.current.bpm === bpm); }
+  isLoading(tab, bpm) { return this.isPlaying(tab, bpm) && this.current.loading; }
 
-  play(tab, bpm) {
+  async play(tab, bpm) {
     this.stop();
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
     if (!this.ctx) this.ctx = new Ctx();
     if (this.ctx.state === 'suspended') this.ctx.resume();
 
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 1;
-    this.master.connect(this.ctx.destination);
-    const total = scheduleTab(this.ctx, this.master, tab.play, bpm, this.ctx.currentTime + 0.06);
-    this.current = { tab, bpm };
+    const token = ++this.token;
+    this.current = { tab, bpm, loading: true };
+    this.emit();
+
+    let samples = null;
+    try {
+      samples = await loadSamples(this.ctx, tab.play.voice, notesOf(tab.play.cols));
+    } catch (e) { /* segue com o sintetizador */ }
+    if (token !== this.token) return; // parou (ou trocou de exercício) enquanto carregava
+
+    const output = createOutput(this.ctx);
+    this.master = output.master;
+    const total = scheduleTab(this.ctx, output.input, tab.play, bpm, this.ctx.currentTime + 0.06, samples);
+    this.current = { tab, bpm, loading: false };
     this.timer = setTimeout(() => this.stop(), total * 1000 + 150);
     this.emit();
   }
 
   stop() {
+    this.token += 1;
     clearTimeout(this.timer);
     this.timer = null;
     if (this.master) {
