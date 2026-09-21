@@ -19,6 +19,8 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/data/exercises.js`: banco de exercícios (tablaturas, passos, BPM). Editar aqui para criar conteúdo.
 - `js/data/chords.js`: banco de acordes (diagrama SVG gerado a partir de `frets`/`fingers`).
 - `js/data/plans.js`: plano padrão de cada dia (lista de `{ex, min}` referindo ids do banco).
+- `js/tab-dsl.js`: notação curta de tablatura (`'e5h e8p e5 G7b9r7 B8~'`: h/p = hammer-on/pull-off, b = bend, r = retorno,
+  ~ = vibrato). Em `exercises.js`, `dslTab()` a usa; nota ligada toca suave, sem ataque de palheta.
 - `js/tab.js`: `buildTab()` gera a tablatura; **nunca escrever tablatura à mão** (desalinha).
   Em `exercises.js`, `makeTab()` guarda o texto e as notas (`play`); o botão "Ouvir" toca essas notas via
   `js/tab-player.js`. Som: gravações reais de guitarra em `audio/guitar-<timbre>/<nota MIDI>.mp3` (Mi2 a Mi5,
@@ -36,7 +38,7 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - Cada dia soma ~60 min. O usuário personaliza os dias (tempo, ordem, remover, trocar, adicionar).
 - A velocidade (BPM) é **por exercício**, não por dia, e continua de uma semana para a outra.
   Regra: 3 limpos seguidos = +4 BPM; 2 erros seguidos = −4 BPM.
-- Exercício com `draft: true` ainda está em resumo (terça a domingo); detalhar mantendo o nível da segunda.
+- Todos os dias estão detalhados. `draft: true` marca um exercício ainda em resumo (hoje nenhum). Volume por tablatura: `gain` (só para os lentos).
 - Ao adicionar arquivo novo ao app, incluí-lo em `SHELL` no `sw.js` e subir `CACHE`.
 
 ## Pendências
@@ -44,5 +46,5 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - Sincronização: projeto Supabase `treino-guitarra` ligado em `js/config.js` (cadastro público desligado, RLS testada).
   Validada com 2 aparelhos (notebook → nuvem → celular, com marcações diferentes juntadas). Falta confirmar a velocidade (BPM).
 - Publicar no GitHub Pages (repositório `marcoamerlin/treino-guitarra`, ver `docs/setup.md`).
-- Detalhar terça a domingo.
+- Conteúdo de terça a domingo escrito por mim (sem professor): validar tablaturas e licks tocando, e ajustar o que soar estranho.
 - Ideias: gráfico de progresso, lembrete diário, exercícios criados pelo usuário.

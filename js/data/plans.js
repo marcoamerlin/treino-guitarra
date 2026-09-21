@@ -1,5 +1,6 @@
 // Plano padrão de cada dia. O usuário pode personalizar no app (tempo, ordem,
 // remover, trocar, adicionar); o plano personalizado fica guardado por dia.
+// Cada dia de treino soma 60 min.
 
 export const WEEK = [
   {
@@ -22,9 +23,11 @@ export const WEEK = [
     focus: 'Técnica: hammer-on e pull-off, fluidez com menos esforço de palhetada.',
     plan: [
       { ex: 'chroma', min: 10 },
-      { ex: 'legato', min: 20 },
-      { ex: 'legato_licks', min: 15 },
-      { ex: 'apl_free', min: 10 },
+      { ex: 'leg_1', min: 8 },
+      { ex: 'leg_run', min: 7 },
+      { ex: 'leg_trill', min: 5 },
+      { ex: 'leg_lick', min: 15 },
+      { ex: 'apl_legato', min: 10 },
       { ex: 'ritmo_pw', min: 5 },
     ],
   },
@@ -34,9 +37,11 @@ export const WEEK = [
     focus: 'Técnica: controle de afinação em bends e vibrato expressivo.',
     plan: [
       { ex: 'chroma', min: 10 },
-      { ex: 'bends', min: 20 },
-      { ex: 'bend_phrases', min: 15 },
-      { ex: 'apl_free', min: 10 },
+      { ex: 'bend_1', min: 8 },
+      { ex: 'bend_rel', min: 6 },
+      { ex: 'vibrato', min: 6 },
+      { ex: 'bend_lick', min: 15 },
+      { ex: 'apl_expr', min: 10 },
       { ex: 'ritmo_pw', min: 5 },
     ],
   },
@@ -46,20 +51,23 @@ export const WEEK = [
     focus: 'Técnica: coordenação entre cordas não adjacentes.',
     plan: [
       { ex: 'chroma', min: 10 },
-      { ex: 'skipping', min: 20 },
-      { ex: 'skip_licks', min: 15 },
-      { ex: 'apl_free', min: 10 },
+      { ex: 'skip_1', min: 8 },
+      { ex: 'skip_2', min: 7 },
+      { ex: 'skip_3', min: 5 },
+      { ex: 'skip_lick', min: 15 },
+      { ex: 'apl_skip', min: 10 },
       { ex: 'ritmo_pw', min: 5 },
     ],
   },
   {
     key: 'sex', label: 'SEX', name: 'Sexta-feira', weekday: 5,
     title: 'Licks de Rock',
-    focus: 'Técnica livre: o que estiver mais difícil na semana.',
+    focus: 'Técnica livre e frases que juntam o que foi treinado na semana.',
     plan: [
       { ex: 'chroma', min: 10 },
-      { ex: 'free_tech', min: 20 },
-      { ex: 'combo_licks', min: 15 },
+      { ex: 'free_tech', min: 15 },
+      { ex: 'combo_lick1', min: 10 },
+      { ex: 'combo_lick2', min: 10 },
       { ex: 'apl_free', min: 10 },
       { ex: 'ritmo_pm', min: 5 },
     ],

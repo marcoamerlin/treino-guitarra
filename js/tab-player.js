@@ -4,7 +4,8 @@
 // ver audio/CREDITS.md). Se uma nota não carregar, cai no sintetizador (corda dedilhada simulada
 // por Karplus-Strong, com distorção no timbre "muted"), que também serve de reserva offline.
 //
-// spec: { cols, perBeat, voice: 'muted' | 'clean', repeat? }  (cols no formato de tab.js)
+// spec: { cols, perBeat, voice: 'muted' | 'clean', repeat?, soft?, gain? }  (cols no formato de tab.js)
+//   soft: por coluna, true = nota de hammer-on/pull-off (mais suave, sem ataque). gain: ajuste de volume da tablatura.
 //   perBeat: colunas por tempo (2 = colcheias). Fret '7b9r7' = bend de 7 até 9 e solta.
 
 const OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // e B G D A E
@@ -16,10 +17,16 @@ const CAB_HZ = 2000; // corte da "caixa" no timbre limpo
 // para que o limpo e o abafado soem no mesmo nível.
 const CLEAN_LOUDNESS = 1.05e-2;
 
+// Casa como aparece na tablatura: 7 | 7~ (vibrato) | 7b9 (bend) | 7b9r7 (bend e solta) | 7b9~ (bend e vibrato).
 export function parseFret(raw) {
-  const bend = /^(\d+)b(\d+)r\d+$/.exec(String(raw));
-  if (bend) return { fret: Number(bend[1]), bendTo: Number(bend[2]) };
-  return { fret: parseInt(raw, 10), bendTo: null };
+  const match = /^(\d+)(?:b(\d+)(?:(r)\d+)?)?(~)?$/.exec(String(raw));
+  if (!match) return { fret: parseInt(raw, 10), bendTo: null, release: false, vibrato: false };
+  return {
+    fret: Number(match[1]),
+    bendTo: match[2] === undefined ? null : Number(match[2]),
+    release: Boolean(match[3]),
+    vibrato: Boolean(match[4]),
+  };
 }
 
 export const midiOf = (string, rawFret) => OPEN_MIDI[string] + parseFret(rawFret).fret;
@@ -277,35 +284,63 @@ export function scheduleTab(ctx, dest, spec, bpm, t0, samples = null) {
     tail.connect(dest);
 
     col.forEach(([string, rawFret], n) => {
-      const { fret, bendTo } = parseFret(rawFret);
+      const { fret, bendTo, release, vibrato } = parseFret(rawFret);
       const midi = OPEN_MIDI[string] + fret;
       const start = t + n * 0.007; // cordas do acorde entram em sequência, como uma palhetada
       const sample = useSamples ? samples.get(midi) : null;
+      // Nota alcançada por hammer-on ou pull-off: sem palhetada, mais suave.
+      const soft = Boolean(spec.soft && spec.soft[i % spec.cols.length]);
+      const sustained = bendTo != null || vibrato; // notas expressivas pedem um tempo para desenvolver
 
       // Soma-se o efeito de bend ao playbackRate de quem estiver tocando (amostra ou corda simulada).
+      // Sobe em 0,3 s; com "r" volta à nota original, sem "r" fica no alvo.
       const bendRate = (rate, param) => {
         const bent = rate * 2 ** ((bendTo - fret) / 12);
         param.setValueAtTime(rate, start + 0.1);
         param.linearRampToValueAtTime(bent, start + 0.4);
-        param.setValueAtTime(bent, start + 0.8);
-        param.linearRampToValueAtTime(rate, start + 1.1);
+        if (release) {
+          param.setValueAtTime(bent, start + 0.8);
+          param.linearRampToValueAtTime(rate, start + 1.1);
+        }
       };
 
       if (sample) {
         // Abafado (palm mute): a nota termina um pouco antes da próxima batida, o que deixa as pausas limpas.
         // Limpo: a nota ressoa e vai sumindo devagar; só é cortada rápido se outra nota entra na mesma corda.
-        const natural = bendTo != null ? 2.2 : muted ? step * 0.92 : Math.min(2.4, step * 4);
+        const natural = sustained ? 2.2 : muted ? step * 0.92 : Math.min(2.4, step * 4);
         const cutIn = cutAt.get(`${i}:${n}`) - start;
         const cutShort = cutIn < natural;
         const length = cutShort ? Math.max(0.03, cutIn + 0.005) : natural;
         const fade = muted ? 0.03 : cutShort ? 0.015 : Math.min(0.5, natural * 0.4);
         const source = ctx.createBufferSource();
         source.buffer = sample.buffer;
+        const level = sample.norm * (soft ? 0.7 : 1) * (spec.gain || 1);
         const env = ctx.createGain();
-        env.gain.setValueAtTime(sample.norm, start);
-        env.gain.setValueAtTime(sample.norm, start + Math.max(0, length - fade));
+        if (soft) {
+          // Sem a batida da palheta: entrada um pouco mais lenta, para não soar como um novo ataque.
+          env.gain.setValueAtTime(level * 0.35, start);
+          env.gain.linearRampToValueAtTime(level, start + 0.02);
+        } else {
+          env.gain.setValueAtTime(level, start);
+        }
+        env.gain.setValueAtTime(level, start + Math.max(0.03, length - fade));
         env.gain.linearRampToValueAtTime(0.0001, start + length); // some sem estalo
         if (bendTo != null) bendRate(1, source.playbackRate);
+        if (vibrato) {
+          // Vibrato: oscila a altura ~5,5 vezes por segundo (±22 cents), entrando aos poucos,
+          // depois que o bend (se houver) chegou ao alvo.
+          const lfo = ctx.createOscillator();
+          const depth = ctx.createGain();
+          const from = start + (bendTo != null ? 0.5 : 0.2);
+          lfo.type = 'sine';
+          lfo.frequency.value = 5.5;
+          depth.gain.setValueAtTime(0, from);
+          depth.gain.linearRampToValueAtTime(0.013, from + 0.35);
+          lfo.connect(depth);
+          depth.connect(source.playbackRate);
+          lfo.start(start);
+          lfo.stop(start + length + 0.05);
+        }
         source.connect(env);
         env.connect(bus);
         source.start(start);

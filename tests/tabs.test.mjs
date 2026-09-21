@@ -5,6 +5,7 @@ import { EXERCISES } from '../js/data/exercises.js';
 import { CHORDS, chordCol } from '../js/data/chords.js';
 import { WEEK } from '../js/data/plans.js';
 import { parseFret } from '../js/tab-player.js';
+import { parseTab } from '../js/tab-dsl.js';
 
 const allTabs = Object.entries(EXERCISES).flatMap(([id, ex]) => (ex.tabs || []).map((tab) => ({ id, tab })));
 
@@ -28,7 +29,7 @@ test('todas as tablaturas têm linhas das cordas com o mesmo comprimento', () =>
 test('toda tablatura tocável só usa cordas 0–5 e casas válidas', () => {
   allTabs.filter(({ tab }) => tab.play).forEach(({ id, tab }) => {
     assert.ok(['clean', 'muted'].includes(tab.play.voice), `${id}: timbre inválido`);
-    assert.ok(tab.play.perBeat >= 1, `${id}: perBeat inválido`);
+    assert.ok(tab.play.perBeat > 0, `${id}: perBeat inválido`);
     tab.play.cols.forEach((col) => (col || []).forEach(([string, raw]) => {
       const { fret } = parseFret(raw);
       assert.ok(string >= 0 && string <= 5, `${id}: corda ${string}`);
@@ -37,15 +38,18 @@ test('toda tablatura tocável só usa cordas 0–5 e casas válidas', () => {
   });
 });
 
-test('bend "7b9r7" é lido como casa 7 subindo até 9', () => {
-  assert.deepEqual(parseFret('7b9r7'), { fret: 7, bendTo: 9 });
-  assert.deepEqual(parseFret(12), { fret: 12, bendTo: null });
+test('parseFret entende bend, retorno e vibrato', () => {
+  assert.deepEqual(parseFret('7b9r7'), { fret: 7, bendTo: 9, release: true, vibrato: false });
+  assert.deepEqual(parseFret('7b9'), { fret: 7, bendTo: 9, release: false, vibrato: false });
+  assert.deepEqual(parseFret('8~'), { fret: 8, bendTo: null, release: false, vibrato: true });
+  assert.deepEqual(parseFret('8b10~'), { fret: 8, bendTo: 10, release: false, vibrato: true });
+  assert.deepEqual(parseFret(12), { fret: 12, bendTo: null, release: false, vibrato: false });
 });
 
 test('acordes: casas coerentes com os dedos e as notas certas (raiz + quinta)', () => {
   // classe de altura (0=Dó ... 9=Lá) das cordas soltas E A D G B e
   const open = [4, 9, 2, 7, 11, 4];
-  const roots = { A5: 9, C5: 0, D5: 2, E5: 4 };
+  const roots = { A5: 9, C5: 0, D5: 2, E5: 4, G5: 7, F5: 5 };
   Object.entries(CHORDS).forEach(([id, chord]) => {
     const notes = chord.frets.map((f, i) => (f == null ? null : (open[i] + f) % 12)).filter((n) => n !== null);
     const root = roots[id];
@@ -92,4 +96,47 @@ test('o service worker guarda offline exatamente as gravações que existem (MID
     assert.equal(files[0], 40);
     assert.equal(files[36], 76);
   }
+});
+
+test('notação curta: hammer-on/pull-off viram ligação, e a nota ligada não leva palhetada', () => {
+  const tab = parseTab('e5h e8p e5 B8');
+  assert.equal(tab.cols.length, 4);
+  assert.deepEqual(tab.links, ['h', 'p', null, null]);
+  assert.deepEqual(tab.pick, ['v', ' ', ' ', 'v']);
+  assert.deepEqual(tab.soft, [false, true, true, false]);
+  assert.deepEqual(tab.cols[0], [[0, 5]]);
+  assert.deepEqual(tab.cols[3], [[1, 8]]);
+});
+
+test('notação curta: bend, vibrato, pausa, palhetada alternada e erro em nota inválida', () => {
+  const tab = parseTab('G7b9r7 B8~ - D7', { pick: 'alt' });
+  assert.deepEqual(tab.cols[0], [[2, '7b9r7']]);
+  assert.deepEqual(tab.cols[1], [[1, '8~']]);
+  assert.equal(tab.cols[2], null);
+  assert.deepEqual(tab.pick, ['v', '^', ' ', 'v']);
+  assert.throws(() => parseTab('X5'), /inválida/);
+});
+
+test('buildTab com ligações desenha 5h8p5 e mantém as linhas alinhadas', () => {
+  const tab = parseTab('E5h E8p E5 A5h A7p A5');
+  const text = buildTab(tab.cols, { links: tab.links, pick: tab.pick });
+  const rows = text.split('\n').filter((line) => /^[eBGDAE]\|/.test(line));
+  assert.equal(rows.length, 6);
+  assert.equal(new Set(rows.map((r) => r.length)).size, 1);
+  assert.match(rows[5], /^E\|-5h8p5-/);
+  assert.match(rows[4], /5h7p5--\|$/);
+});
+
+test('cada dia de treino detalhado: todos os exercícios têm passos e nenhum ficou em resumo (draft)', () => {
+  WEEK.forEach((day) => day.plan.forEach((item) => {
+    const ex = EXERCISES[item.ex];
+    assert.ok(ex.steps && ex.steps.length >= 1, `${item.ex}: sem passo a passo`);
+    assert.ok(!ex.draft, `${item.ex}: ainda em resumo`);
+  }));
+});
+
+test('exercícios com metrônomo têm meta maior que o começo', () => {
+  Object.entries(EXERCISES).filter(([, ex]) => ex.bpm).forEach(([id, ex]) => {
+    assert.ok(ex.bpm.goal > ex.bpm.start, `${id}: meta menor que o início`);
+  });
 });
