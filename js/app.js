@@ -75,8 +75,9 @@ function computeStreak() {
 const sheet = $('#sheet');
 const sheetBody = $('#sheetBody');
 
+// A view já foi criada (e registrou seu redesenho em sheetRedrawers) antes de chegar aqui,
+// então a lista só é limpa ao fechar a folha.
 function openSheet(node) {
-  sheetRedrawers = [];
   sheetBody.replaceChildren(node);
   sheet.classList.add('open');
   sheet.querySelector('.sheet').scrollTop = 0;
