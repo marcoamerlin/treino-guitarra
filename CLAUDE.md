@@ -41,8 +41,8 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 
 ## Pendências
 
-- Sincronização: projeto Supabase `treino-guitarra` criado e ligado em `js/config.js` (cadastro público desligado,
-  RLS testada). Falta o primeiro login do usuário nos aparelhos para validar a sincronização de ponta a ponta.
+- Sincronização: projeto Supabase `treino-guitarra` ligado em `js/config.js` (cadastro público desligado, RLS testada).
+  Validada com 2 aparelhos (notebook → nuvem → celular, com marcações diferentes juntadas). Falta confirmar a velocidade (BPM).
 - Publicar no GitHub Pages (repositório `marcoamerlin/treino-guitarra`, ver `docs/setup.md`).
 - Detalhar terça a domingo.
 - Ideias: gráfico de progresso, lembrete diário, exercícios criados pelo usuário.
