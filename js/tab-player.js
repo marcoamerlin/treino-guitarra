@@ -156,6 +156,16 @@ export function scheduleTab(ctx, dest, spec, bpm, t0, samples = null) {
   const cols = [];
   for (let r = 0; r < (spec.repeat || 1); r++) cols.push(...spec.cols);
 
+  // Numa guitarra, tocar outra nota na mesma corda interrompe a anterior. Para cada nota,
+  // descobre quando a próxima nota da mesma corda entra (Infinity se não houver).
+  const cutAt = new Map();
+  const nextOnString = new Array(6).fill(Infinity);
+  for (let i = cols.length - 1; i >= 0; i--) {
+    const col = cols[i] || [];
+    col.forEach(([string], n) => cutAt.set(`${i}:${n}`, nextOnString[string]));
+    col.forEach(([string], n) => { nextOnString[string] = t0 + i * step + n * 0.007; });
+  }
+
   let end = 0;
   cols.forEach((col, i) => {
     if (!col || !col.length) return; // pausa
@@ -202,13 +212,18 @@ export function scheduleTab(ctx, dest, spec, bpm, t0, samples = null) {
 
       if (sample) {
         // Abafado (palm mute): a nota termina um pouco antes da próxima batida, o que deixa as pausas limpas.
-        const length = bendTo != null ? 1.5 : muted ? step * 0.92 : Math.min(2.4, step * 4);
+        // Limpo: a nota ressoa e vai sumindo devagar; só é cortada rápido se outra nota entra na mesma corda.
+        const natural = bendTo != null ? 2.2 : muted ? step * 0.92 : Math.min(2.4, step * 4);
+        const cutIn = cutAt.get(`${i}:${n}`) - start;
+        const cutShort = cutIn < natural;
+        const length = cutShort ? Math.max(0.03, cutIn + 0.005) : natural;
+        const fade = muted ? 0.03 : cutShort ? 0.015 : Math.min(0.5, natural * 0.4);
         const source = ctx.createBufferSource();
         source.buffer = sample.buffer;
         const env = ctx.createGain();
         env.gain.setValueAtTime(sample.norm, start);
-        env.gain.setValueAtTime(sample.norm, start + Math.max(0, length - 0.03));
-        env.gain.linearRampToValueAtTime(0.0001, start + length); // corta a nota sem estalo
+        env.gain.setValueAtTime(sample.norm, start + Math.max(0, length - fade));
+        env.gain.linearRampToValueAtTime(0.0001, start + length); // some sem estalo
         if (bendTo != null) bendRate(1, source.playbackRate);
         source.connect(env);
         env.connect(bus);
