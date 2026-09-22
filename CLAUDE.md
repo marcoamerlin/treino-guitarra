@@ -30,6 +30,11 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/merge.js`: combina dados de dois aparelhos (funções puras). `js/sync-core.js`: motor de sync com
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
+- `js/audio-context.js`: AudioContext resistente a travas (Android às vezes prende o canal de áudio numa
+  troca de saída — cabo/fone/Bluetooth — ou após tempo em segundo plano, sem erro, só silêncio; visto
+  na prática em 2026-09-23). `ensureRunningContext()` confere o estado antes de cada som e recria o
+  canal se preciso, com tempo limite de 800ms para não travar caso `resume()` nunca responda. Usado
+  por metronome.js e tab-player.js — qualquer novo produtor de som deve passar por ele também.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).

@@ -4,6 +4,8 @@
 // ver audio/CREDITS.md). Se uma nota não carregar, cai no sintetizador (corda dedilhada simulada
 // por Karplus-Strong, com distorção no timbre "muted"), que também serve de reserva offline.
 //
+import { ensureRunningContext } from './audio-context.js';
+
 // spec: { cols, perBeat, voice: 'muted' | 'clean', repeat?, soft?, gain? }  (cols no formato de tab.js)
 //   soft: por coluna, true = nota de hammer-on/pull-off (mais suave, sem ataque). gain: ajuste de volume da tablatura.
 //   perBeat: colunas por tempo (2 = colcheias). Fret '7b9r7' = bend de 7 até 9 e solta.
@@ -389,12 +391,12 @@ class TabPlayer {
 
   async play(tab, bpm) {
     this.stop();
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    if (!this.ctx) this.ctx = new Ctx();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-
     const token = ++this.token;
+    const ctx = await ensureRunningContext(this.ctx);
+    if (token !== this.token) return; // stop()/outro play() aconteceu enquanto esperava o canal
+    if (!ctx) return; // sem suporte a Web Audio neste navegador
+    this.ctx = ctx;
+
     this.current = { tab, bpm, loading: true };
     this.emit();
 

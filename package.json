@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "start": "node tools/serve.mjs",
-    "test": "node --test tests/merge.test.mjs tests/sync.test.mjs tests/tabs.test.mjs tests/practice-timer.test.mjs tests/theory.test.mjs tests/chord-shapes.test.mjs"
+    "test": "node --test tests/merge.test.mjs tests/sync.test.mjs tests/tabs.test.mjs tests/practice-timer.test.mjs tests/theory.test.mjs tests/chord-shapes.test.mjs tests/audio-context.test.mjs"
   }
 }

@@ -1,6 +1,8 @@
 // Metrônomo com Web Audio. Agenda os cliques com antecedência (lookahead) para não
 // depender da precisão do setInterval, que oscila principalmente no celular.
 
+import { ensureRunningContext } from './audio-context.js';
+
 const LOOKAHEAD_S = 0.15;
 const TICK_MS = 25;
 
@@ -32,13 +34,13 @@ class Metronome {
   setBeats(beats) { this.beats = beats; this.emit('change'); }
   setSubdivide(on) { this.subdivide = on; this.emit('change'); }
 
-  start() {
+  async start() {
     if (this.running) return;
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    if (!this.ctx) this.ctx = new Ctx();
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    this.running = true;
+    this.running = true; // trava já, antes do await, para 2 cliques rápidos não abrirem 2 contextos
+    const ctx = await ensureRunningContext(this.ctx);
+    if (!this.running) return; // start()+stop() rápidos enquanto o await corria: desiste
+    if (!ctx) { this.running = false; return; } // sem suporte a Web Audio neste navegador
+    this.ctx = ctx;
     this.step = 0;
     this.nextTime = this.ctx.currentTime + 0.08;
     this.timer = setInterval(() => this.tick(), TICK_MS);
