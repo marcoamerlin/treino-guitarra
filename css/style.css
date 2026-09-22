@@ -524,6 +524,7 @@ footer.hint { text-align: center; color: var(--text-faint); font-size: 12px; mar
 .fb-fretnum { fill: var(--text-faint); font: 500 10px var(--font-mono); }
 .fb-stringname { fill: var(--text-faint); font: 600 11px var(--font-mono); }
 .fb-marker { fill: var(--border-soft); }
+.fb-mute { fill: var(--led-red); font: 700 11px var(--font-mono); }
 .fb-dot { fill: var(--lcd-text); }
 .fb-dot.fb-root { fill: var(--brass); stroke: var(--lcd-text); stroke-width: 2.5; }
 .fb-note { fill: #1B1613; font: 700 10px var(--font-mono); }

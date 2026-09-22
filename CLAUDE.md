@@ -31,7 +31,8 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
-- `js/theory.js` + `js/fretboard.js`: explorador de escalas (botão "Escalas" no cabeçalho, tela cheia).
+- `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
+  "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
   5 posições clássicas (positionsOf, casas conectadas: fim de uma = início da próxima); escalas de
   7 notas só mostram o braço inteiro (janela entre graus fica curta demais para virar posição). Uma
@@ -39,6 +40,10 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   validador do skill dataviz para pontos que podem ficar lado a lado (mesmo motivo de referências
   do mercado mostrarem uma caixa por vez). Raiz destacada por anel, não por cor (funciona para
   qualquer visão). SVG do braço precisa de width/height além do viewBox, senão fica 0×0.
+  Acordes: sistema CAGED, 5 formas móveis (E A D C G), cada uma nasce de um acorde aberto real
+  (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
+  — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar
+  tools/derive-chord-shapes.mjs para conferir por computador.
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.

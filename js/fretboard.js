@@ -5,12 +5,13 @@ import { STRING_NAMES } from './theory.js';
 
 const FRET_W = 34;
 const STRING_GAP = 24;
-const LEFT = 26;
+const LEFT = 34; // um pouco mais de espaço à esquerda, para caber o "×" de corda mutada
 const TOP = 22;
 const SINGLE_MARKERS = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
 const DOUBLE_MARKERS = new Set([12, 24]);
 
-export function fretboardSVG({ fretStart = 0, fretEnd = 12, dots = [] }) {
+// muted: índices de corda que não tocam (marca um "×" antes do traste), para diagramas de acorde.
+export function fretboardSVG({ fretStart = 0, fretEnd = 12, dots = [], muted = [] }) {
   const count = fretEnd - fretStart + 1;
   const width = LEFT + count * FRET_W + 12;
   const height = TOP + STRING_GAP * 5 + 22;
@@ -37,7 +38,10 @@ export function fretboardSVG({ fretStart = 0, fretEnd = 12, dots = [] }) {
     svg += `<line class="fb-fret${nut ? ' fb-nut' : ''}" x1="${x}" y1="${yOf(0)}" x2="${x}" y2="${yOf(5)}"/>`;
   }
   STRING_NAMES.forEach((name, s) => {
-    svg += `<text class="fb-stringname" x="${LEFT - 12}" y="${yOf(s) + 4}" text-anchor="middle">${name}</text>`;
+    svg += `<text class="fb-stringname" x="${LEFT - 20}" y="${yOf(s) + 4}" text-anchor="middle">${name}</text>`;
+  });
+  muted.forEach((s) => {
+    svg += `<text class="fb-mute" x="${LEFT - 8}" y="${yOf(s) + 4}" text-anchor="middle">×</text>`;
   });
   dots.forEach((dot) => {
     const x = xOf(dot.fret);

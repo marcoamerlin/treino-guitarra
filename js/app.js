@@ -6,8 +6,9 @@ import { buildTab } from './tab.js';
 import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
-import { NOTE_NAMES, SCALES, hasPositions, positionsOf, fretboardNotes } from './theory.js';
+import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, fretboardNotes } from './theory.js';
 import { fretboardSVG } from './fretboard.js';
+import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 
@@ -178,8 +179,26 @@ function metronomeView() {
 const scalesOverlay = $('#scalesView');
 const scalesBody = $('#scalesBody');
 
-function openScales() { scalesBody.replaceChildren(scaleExplorerView()); scalesOverlay.classList.add('open'); }
+const BRACO_TABS = { scales: 'Escalas', chords: 'Acordes' };
+
+function openScales() { renderBraco(); scalesOverlay.classList.add('open'); }
 function closeScales() { scalesOverlay.classList.remove('open'); }
+
+function renderBraco() {
+  const tab = store.getPref('fbTab', 'scales');
+  $('#scalesTitle').textContent = BRACO_TABS[tab];
+
+  const wrap = el('div');
+  wrap.innerHTML = '<div class="chip-row fb-tab-row"></div><div class="fb-tab-body"></div>';
+  const tabRow = wrap.querySelector('.fb-tab-row');
+  Object.entries(BRACO_TABS).forEach(([key, label]) => {
+    const chip = el('button', `chip${key === tab ? ' on' : ''}`, label);
+    chip.addEventListener('click', () => { store.setPref('fbTab', key); renderBraco(); });
+    tabRow.appendChild(chip);
+  });
+  wrap.querySelector('.fb-tab-body').appendChild(tab === 'chords' ? chordExplorerView() : scaleExplorerView());
+  scalesBody.replaceChildren(wrap);
+}
 
 // "Todas" = modo 0; posição 1..N = aquela caixa só. Ao trocar de escala, uma posição fora do
 // alcance da nova escala volta para "Todas" (ver draw() abaixo).
@@ -247,6 +266,74 @@ function scaleExplorerView() {
         ? 'Toque numa posição (1 a 5) para ver só aquela caixa. A raiz aparece com o anel dourado.'
         : `Posição ${m} de ${pos.length}: casas ${pos[m - 1].start} a ${pos[m - 1].end}. A última casa desta posição é a primeira da próxima — é por onde elas se conectam no braço.`)
       : 'Escala de 7 notas: aqui só o braço inteiro, sem posições (as janelas entre graus ficam curtas demais para virar uma caixa de mão).';
+  }
+
+  draw();
+  return root;
+}
+
+const SHAPE_KEYS = Object.keys(CAGED_SHAPES); // E, A, D, C, G
+
+function chordExplorerView() {
+  const rootPc = store.getPref('chordRoot', 9); // A
+  const typeKey = store.getPref('chordType', 'major');
+
+  const root = el('div');
+  root.innerHTML =
+    '<div class="chip-row root-row"></div>' +
+    '<div class="chip-row scale-row"></div>' +
+    '<div class="scale-info"><span class="scale-name"></span></div>' +
+    '<div class="chip-row pos-row"></div>' +
+    '<div class="fret-scroll"><div class="fret-inner"></div></div>' +
+    '<p class="tip"></p>';
+
+  const rootRow = root.querySelector('.root-row');
+  NOTE_NAMES.forEach((name, pc) => {
+    const chip = el('button', `chip${pc === rootPc ? ' on' : ''}`, name);
+    chip.addEventListener('click', () => { store.setPref('chordRoot', pc); store.setPref('chordShape', 'E'); draw(); });
+    rootRow.appendChild(chip);
+  });
+
+  const typeRow = root.querySelector('.scale-row');
+  Object.entries(CHORD_TYPES).forEach(([key, type]) => {
+    const chip = el('button', `chip${key === typeKey ? ' on' : ''}`, type.label);
+    chip.addEventListener('click', () => { store.setPref('chordType', key); draw(); });
+    typeRow.appendChild(chip);
+  });
+
+  function draw() {
+    const rp = store.getPref('chordRoot', 9);
+    const tk = store.getPref('chordType', 'major');
+    const type = CHORD_TYPES[tk];
+    const shapeKey = SHAPE_KEYS.includes(store.getPref('chordShape', 'E')) ? store.getPref('chordShape', 'E') : 'E';
+
+    root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
+    root.querySelectorAll('.scale-row .chip').forEach((c) => c.classList.toggle('on', c.textContent === type.label));
+    root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]}${type.suffix}`;
+
+    const posRow = root.querySelector('.pos-row');
+    posRow.innerHTML = '';
+    SHAPE_KEYS.forEach((key) => {
+      const chip = el('button', `chip${key === shapeKey ? ' on' : ''}`, `Forma ${key}`);
+      chip.addEventListener('click', () => { store.setPref('chordShape', key); draw(); });
+      posRow.appendChild(chip);
+    });
+
+    const frets = voicingFrets(shapeKey, tk, rp);
+    const usedFrets = Object.values(frets);
+    const lowest = Math.min(...usedFrets);
+    const fretStart = Math.max(0, lowest - (lowest === 0 ? 0 : 1));
+    const fretEnd = Math.max(...usedFrets) + 1;
+    const dots = Object.entries(frets).map(([string, fret]) => {
+      const pc = (OPEN_PC[Number(string)] + fret) % 12;
+      return { string: Number(string), fret, name: NOTE_NAMES[pc], root: pc === rp };
+    });
+    const muted = [0, 1, 2, 3, 4, 5].filter((s) => !(s in frets));
+    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart, fretEnd, dots, muted });
+
+    root.querySelector('.tip').textContent =
+      `Forma ${shapeKey}: o desenho do acorde aberto de ${shapeKey} maior, deslizado até a casa certa. ` +
+      'Toque nas outras formas para ver outros jeitos de tocar o mesmo acorde, subindo pelo braço.';
   }
 
   draw();
