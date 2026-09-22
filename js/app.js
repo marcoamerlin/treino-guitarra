@@ -6,6 +6,8 @@ import { buildTab } from './tab.js';
 import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
+import { NOTE_NAMES, SCALES, hasPositions, positionsOf, fretboardNotes } from './theory.js';
+import { fretboardSVG } from './fretboard.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 
@@ -170,6 +172,91 @@ function metronomeView() {
   update();
   return root;
 }
+
+// ---- Explorador de escalas -------------------------------------------------------------
+
+const scalesOverlay = $('#scalesView');
+const scalesBody = $('#scalesBody');
+
+function openScales() { scalesBody.replaceChildren(scaleExplorerView()); scalesOverlay.classList.add('open'); }
+function closeScales() { scalesOverlay.classList.remove('open'); }
+
+// "Todas" = modo 0; posição 1..N = aquela caixa só. Ao trocar de escala, uma posição fora do
+// alcance da nova escala volta para "Todas" (ver draw() abaixo).
+function scaleExplorerView() {
+  const rootPc = store.getPref('scaleRoot', 9); // A
+  const scaleKey = store.getPref('scaleType', 'pentMinor');
+
+  const root = el('div');
+  root.innerHTML =
+    '<div class="chip-row root-row"></div>' +
+    '<div class="chip-row scale-row"></div>' +
+    '<div class="scale-info"><span class="scale-name"></span><span class="scale-degrees"></span></div>' +
+    '<div class="chip-row pos-row"></div>' +
+    '<div class="fret-scroll"><div class="fret-inner"></div></div>' +
+    '<p class="tip"></p>';
+
+  const rootRow = root.querySelector('.root-row');
+  NOTE_NAMES.forEach((name, pc) => {
+    const chip = el('button', `chip${pc === rootPc ? ' on' : ''}`, name);
+    chip.addEventListener('click', () => { store.setPref('scaleRoot', pc); store.setPref('scaleMode', 0); draw(); });
+    rootRow.appendChild(chip);
+  });
+
+  const scaleRow = root.querySelector('.scale-row');
+  Object.entries(SCALES).forEach(([key, scale]) => {
+    const chip = el('button', `chip${key === scaleKey ? ' on' : ''}`, scale.label);
+    chip.addEventListener('click', () => { store.setPref('scaleType', key); store.setPref('scaleMode', 0); draw(); });
+    scaleRow.appendChild(chip);
+  });
+
+  function draw() {
+    const rp = store.getPref('scaleRoot', 9);
+    const sk = store.getPref('scaleType', 'pentMinor');
+    const scale = SCALES[sk];
+    const withPositions = hasPositions(sk);
+    const pos = withPositions ? positionsOf(rp, sk) : [];
+    let m = withPositions ? store.getPref('scaleMode', 0) : 0;
+    if (m > pos.length) { m = 0; store.setPref('scaleMode', 0); }
+
+    root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
+    root.querySelectorAll('.scale-row .chip').forEach((c) => c.classList.toggle('on', c.textContent === scale.label));
+    root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label}`;
+    root.querySelector('.scale-degrees').textContent = scale.degrees.join('  ');
+
+    const posRow = root.querySelector('.pos-row');
+    posRow.innerHTML = '';
+    if (withPositions) {
+      const all = el('button', `chip${m === 0 ? ' on' : ''}`, 'Todas');
+      all.addEventListener('click', () => { store.setPref('scaleMode', 0); draw(); });
+      posRow.appendChild(all);
+      pos.forEach((p) => {
+        const chip = el('button', `chip${m === p.index ? ' on' : ''}`, String(p.index));
+        chip.addEventListener('click', () => { store.setPref('scaleMode', p.index); draw(); });
+        posRow.appendChild(chip);
+      });
+    }
+
+    const fretStart = m === 0 ? 0 : Math.max(0, pos[m - 1].start - 1);
+    const fretEnd = m === 0 ? 12 : pos[m - 1].end + 1;
+    const notes = fretboardNotes(rp, sk, fretStart, fretEnd);
+    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart, fretEnd, dots: notes });
+
+    root.querySelector('.tip').textContent = withPositions
+      ? (m === 0
+        ? 'Toque numa posição (1 a 5) para ver só aquela caixa. A raiz aparece com o anel dourado.'
+        : `Posição ${m} de ${pos.length}: casas ${pos[m - 1].start} a ${pos[m - 1].end}. A última casa desta posição é a primeira da próxima — é por onde elas se conectam no braço.`)
+      : 'Escala de 7 notas: aqui só o braço inteiro, sem posições (as janelas entre graus ficam curtas demais para virar uma caixa de mão).';
+  }
+
+  draw();
+  return root;
+}
+
+$('#scalesBtn').addEventListener('click', openScales);
+$('#scalesClose').addEventListener('click', closeScales);
+scalesOverlay.addEventListener('click', (e) => { if (e.target === scalesOverlay) closeScales(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && scalesOverlay.classList.contains('open')) closeScales(); });
 
 // ---- Conta e sincronização ------------------------------------------------------------
 

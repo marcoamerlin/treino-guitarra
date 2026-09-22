@@ -495,6 +495,39 @@ footer.hint { text-align: center; color: var(--text-faint); font-size: 12px; mar
 .sync-info { margin: 0 0 14px; font-size: 14px; color: var(--text-dim); }
 .sync-info.bad { color: #D9776F; }
 
+/* ---- Explorador de escalas ---- */
+.full-overlay {
+  position: fixed; inset: 0;
+  z-index: 55;
+  display: none;
+  background: var(--bg);
+}
+.full-overlay.open { display: block; }
+.full-panel { height: 100%; overflow-y: auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.full-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.full-header h2 { margin: 0; font-size: 19px; font-weight: 700; }
+.full-close { width: 44px; height: 44px; font-size: 18px; color: var(--text-dim); }
+
+.root-row .chip, .scale-row .chip, .pos-row .chip { font-family: var(--font-mono); font-size: 13px; min-height: 38px; padding: 0 12px; }
+.scale-info { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 4px 0 12px; padding: 0 2px; }
+.scale-info .scale-name { font-size: 17px; font-weight: 700; }
+.scale-info .scale-degrees { font-family: var(--font-mono); font-size: 12.5px; color: var(--brass); letter-spacing: 0.5px; }
+.pos-row { margin-bottom: 4px; }
+.pos-row .chip { min-width: 44px; }
+
+.fret-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; margin: 8px 0 10px; }
+.fret-inner { width: max-content; }
+.fret-svg { display: block; height: auto; }
+.fb-string { stroke: var(--text-faint); stroke-width: 1.2; }
+.fb-fret { stroke: var(--border); stroke-width: 1.2; }
+.fb-fret.fb-nut { stroke: var(--text-dim); stroke-width: 4; }
+.fb-fretnum { fill: var(--text-faint); font: 500 10px var(--font-mono); }
+.fb-stringname { fill: var(--text-faint); font: 600 11px var(--font-mono); }
+.fb-marker { fill: var(--border-soft); }
+.fb-dot { fill: var(--lcd-text); }
+.fb-dot.fb-root { fill: var(--brass); stroke: var(--lcd-text); stroke-width: 2.5; }
+.fb-note { fill: #1B1613; font: 700 10px var(--font-mono); }
+
 /* ---- Aviso rápido ---- */
 .toast {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px));

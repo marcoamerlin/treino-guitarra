@@ -44,6 +44,9 @@
         <span class="sync-led"></span>
         <span id="syncLabel">Entrar</span>
       </button>
+      <button class="metro-pill" id="scalesBtn" type="button" aria-label="Abrir explorador de escalas">
+        <span>🎸 Escalas</span>
+      </button>
     </div>
   </header>
 
@@ -58,6 +61,16 @@
   <div class="sheet" role="dialog" aria-modal="true">
     <button class="sheet-close" id="sheetClose" type="button" aria-label="Fechar">✕</button>
     <div id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="full-overlay" id="scalesView">
+  <div class="full-panel">
+    <div class="full-header">
+      <h2>Escalas</h2>
+      <button class="full-close" id="scalesClose" type="button" aria-label="Fechar">✕</button>
+    </div>
+    <div id="scalesBody"></div>
   </div>
 </div>
 

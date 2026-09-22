@@ -31,6 +31,14 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
+- `js/theory.js` + `js/fretboard.js`: explorador de escalas (botão "Escalas" no cabeçalho, tela cheia).
+  Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
+  5 posições clássicas (positionsOf, casas conectadas: fim de uma = início da próxima); escalas de
+  7 notas só mostram o braço inteiro (janela entre graus fica curta demais para virar posição). Uma
+  posição de cada vez, não as 5 sobrepostas: paleta categórica para 5+ grupos não passou no
+  validador do skill dataviz para pontos que podem ficar lado a lado (mesmo motivo de referências
+  do mercado mostrarem uma caixa por vez). Raiz destacada por anel, não por cor (funciona para
+  qualquer visão). SVG do braço precisa de width/height além do viewBox, senão fica 0×0.
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.
