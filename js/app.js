@@ -5,6 +5,7 @@ import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
 import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
+import { practiceTimer } from './practice-timer.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 
@@ -31,6 +32,14 @@ function dateFor(weekday) {
   const d = new Date(today);
   d.setDate(d.getDate() - ((today.getDay() + 6) % 7) + ((weekday + 6) % 7));
   return d;
+}
+
+// Chave do cronômetro de um exercício: um por dia (a mesma data usada no registro do dia).
+const timerKey = (dateStr, dayKey, exId) => `${dateStr}_${dayKey}_${exId}`;
+
+function formatClock(seconds) {
+  const s = Math.round(Math.abs(seconds));
+  return `${Math.floor(s / 60)}:${pad(s % 60)}`;
 }
 
 let toastTimer = null;
@@ -325,6 +334,51 @@ function speedBox(id, ex) {
   return box;
 }
 
+// ---- Cronômetro do exercício ------------------------------------------------------------
+
+function timerBox(key, minutes, canRun) {
+  const box = el('div', 'timer-box');
+  box.innerHTML =
+    '<div class="label-row"><span>TEMPO DO EXERCÍCIO</span><span></span></div>' +
+    '<div class="timer-readout"><div class="lcd"><div class="num"></div><div class="unit">MIN</div></div></div>' +
+    '<div class="timer-bar"><div class="fill"></div></div>' +
+    '<div class="timer-row">' +
+      '<button class="timer-btn" data-toggle></button>' +
+      '<button class="timer-btn ghost" data-reset>↺ Zerar</button>' +
+    '</div>';
+
+  const update = () => {
+    const target = minutes * 60;
+    const elapsed = practiceTimer.getElapsed(key);
+    const remaining = target - elapsed;
+    const over = remaining < 0;
+    const running = practiceTimer.isRunning(key);
+
+    box.querySelector('.num').textContent = (over ? '+' : '') + formatClock(remaining);
+    box.querySelector('.num').classList.toggle('over', over);
+    box.querySelector('.label-row span:last-child').textContent = over ? 'tempo esgotado' : 'restantes';
+    box.querySelector('.fill').style.width = `${Math.min(100, (elapsed / target) * 100)}%`;
+    box.querySelector('.fill').classList.toggle('over', over);
+
+    const toggleBtn = box.querySelector('[data-toggle]');
+    toggleBtn.textContent = running ? '⏸ Pausar' : elapsed > 0 ? '▶ Continuar' : '▶ Iniciar';
+    toggleBtn.classList.toggle('on', running);
+    toggleBtn.disabled = !canRun;
+    box.querySelector('[data-reset]').disabled = elapsed === 0;
+  };
+
+  box.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
+    if ('toggle' in btn.dataset) practiceTimer.toggle(key);
+    else if ('reset' in btn.dataset) practiceTimer.reset(key);
+  });
+
+  pageRedrawers.push(update);
+  update();
+  return box;
+}
+
 // ---- Ouvir a tablatura ----------------------------------------------------------------
 
 // "Ouvir" toca na sua velocidade atual; "Meta" toca na velocidade que você quer alcançar.
@@ -367,8 +421,10 @@ function listenButtons(id, ex, tab) {
 
 // ---- Exercício (cartão) ---------------------------------------------------------
 
-function exerciseBody(id, ex) {
+function exerciseBody(id, ex, item, tkey, canRun) {
   const body = el('div', 'block-body open');
+
+  body.appendChild(timerBox(tkey, item.min, canRun));
 
   if (ex.steps && ex.steps.length) {
     body.appendChild(el('ol', 'steps', ex.steps.map((s) => `<li>${s}</li>`).join('')));
@@ -431,10 +487,25 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
     render();
   });
 
-  const meta = el('div', 'meta',
-    `<div class="title${done ? ' done' : ''}"></div>` +
-    `<div class="duration">${item.min} min · ${CATEGORIES[ex.cat]}${ex.draft ? ' · <span class="draft">resumo</span>' : ''}</div>`);
+  const meta = el('div', 'meta', `<div class="title${done ? ' done' : ''}"></div><div class="duration"></div>`);
   meta.querySelector('.title').textContent = ex.title;
+
+  const tkey = timerKey(dateStr, day.key, item.ex);
+  const updateDuration = () => {
+    const durationEl = meta.querySelector('.duration');
+    const base = `${item.min} min · ${CATEGORIES[ex.cat]}`;
+    const elapsed = practiceTimer.getElapsed(tkey);
+    if (elapsed > 0) {
+      const remaining = item.min * 60 - elapsed;
+      const over = remaining < 0;
+      const running = practiceTimer.isRunning(tkey);
+      durationEl.innerHTML = `${base} · <span class="timer-chip${over ? ' over' : ''}${running ? ' running' : ''}">${over ? '+' : ''}${formatClock(remaining)}</span>`;
+    } else {
+      durationEl.textContent = base;
+    }
+  };
+  pageRedrawers.push(updateDuration);
+  updateDuration();
 
   const chev = el('div', `chevron${open ? ' open' : ''}`, '▸');
   head.append(sw, meta, chev);
@@ -463,7 +534,7 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
     card.appendChild(row);
   }
 
-  if (open) card.appendChild(exerciseBody(item.ex, ex));
+  if (open) card.appendChild(exerciseBody(item.ex, ex, item, tkey, canCheck));
   return card;
 }
 
@@ -642,6 +713,7 @@ metronome.beats = store.getPref('metroBeats', 4);
 metronome.subdivide = store.getPref('metroSub', false);
 
 tabPlayer.onChange(() => pageRedrawers.forEach((fn) => fn()));
+practiceTimer.onChange(() => pageRedrawers.forEach((fn) => fn()));
 metronome.on('change', () => {
   if (metronome.running) tabPlayer.stop(); // não tocam juntos
   updateMetroPill();

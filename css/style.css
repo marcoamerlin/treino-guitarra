@@ -276,6 +276,25 @@ header.faceplate::before {
 }
 .link-row span { color: var(--brass); }
 
+/* ---- Cronômetro do exercício ---- */
+.timer-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 0 0 12px; }
+.timer-readout { display: flex; justify-content: center; margin: 4px 0 10px; }
+.timer-readout .lcd { background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 22px; text-align: center; min-width: 96px; }
+.timer-readout .num { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: var(--lcd-text); line-height: 1; }
+.timer-readout .num.over { color: var(--led-red); }
+.timer-readout .unit { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-top: 3px; letter-spacing: 0.5px; }
+.timer-bar { height: 5px; border-radius: 3px; background: var(--panel-3); overflow: hidden; margin-bottom: 12px; }
+.timer-bar .fill { height: 100%; background: var(--led-green); width: 0; transition: width 0.4s linear; }
+.timer-bar .fill.over { background: var(--led-red); }
+.timer-row { display: flex; gap: 8px; }
+.timer-btn { flex: 1; min-height: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-3); font-size: 13.5px; font-weight: 600; color: var(--text); }
+.timer-btn.on { border-color: var(--led-green); color: var(--led-green); }
+.timer-btn.ghost { background: transparent; color: var(--text-dim); }
+.timer-btn:disabled { opacity: 0.4; }
+.timer-chip { font-family: var(--font-mono); color: var(--lcd-text); }
+.timer-chip.over { color: var(--led-red); }
+.timer-chip.running::before { content: '● '; color: var(--led-green); }
+
 /* ---- Velocidade e metrônomo ---- */
 .bpm-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; }
 .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }

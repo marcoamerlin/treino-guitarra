@@ -31,6 +31,9 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
+- `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
+  guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
+  controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.
 - `js/app.js`: interface. `sw.js` + `manifest.webmanifest`: PWA offline.
 
 ## Regras do domínio
