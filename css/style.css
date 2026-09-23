@@ -347,6 +347,7 @@ header.faceplate::before {
 .metro-btn.on { border-color: var(--led-green); }
 .metro-btn.big { min-height: 56px; font-size: 16px; margin-top: 14px; }
 .voice-btn.bad { border-color: #7A3833; color: #D9776F; }
+.voice-heard { min-height: 1.4em; margin-top: 6px; font-size: 12px; color: var(--text-faint); font-style: italic; }
 .mic-dot { width: 9px; height: 9px; border-radius: 50%; background: #55483A; flex-shrink: 0; }
 .mic-dot.live { background: var(--led-red); box-shadow: 0 0 8px rgba(193, 68, 60, 0.5); animation: mic-pulse 1.4s ease-in-out infinite; }
 @keyframes mic-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }

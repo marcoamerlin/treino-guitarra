@@ -461,7 +461,8 @@ function speedBox(id, ex) {
     '</div>' +
     '<button class="metro-btn" data-metro><span class="beat-led"></span><span class="label"></span></button>' +
     (voiceSupported
-      ? '<button class="metro-btn voice-btn" data-voice><span class="mic-dot"></span><span class="label"></span></button>'
+      ? '<button class="metro-btn voice-btn" data-voice><span class="mic-dot"></span><span class="label"></span></button>' +
+        '<div class="voice-heard"></div>'
       : '') +
     '<div data-history></div>' +
     `<div class="rule">3 limpos seguidos = +${step} BPM · 2 erros seguidos = −${step} BPM</div>`;
@@ -494,6 +495,9 @@ function speedBox(id, ex) {
         ? 'Ouvindo… diga "limpo" ou "errei"'
         : voiceCommand.state === 'denied' ? 'Permissão de microfone negada'
         : '🎙️ Ativar comando de voz';
+      // Mostra o que o telefone realmente entendeu — ajuda a calibrar se "limpo"/"errei" não pegar.
+      const heard = box.querySelector('.voice-heard');
+      heard.textContent = voiceCommand.lastHeard && listening ? `Ouvi: "${voiceCommand.lastHeard}"` : '';
     }
 
     const history = speed.history.slice(-12);

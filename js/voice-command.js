@@ -47,6 +47,7 @@ class VoiceCommand {
     this.state = 'idle'; // idle | listening | denied | unsupported | error
     this.onCommand = null;
     this.lastFireAt = 0;
+    this.lastHeard = ''; // o que o telefone entendeu por último — ajuda a calibrar a lista de palavras
     this.listeners = new Set();
   }
 
@@ -70,7 +71,11 @@ class VoiceCommand {
 
     recognition.onresult = (event) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const cmd = parseCommand(event.results[i][0].transcript);
+        const result = event.results[i];
+        if (!result.isFinal) continue; // só guarda/decide em cima do texto já fechado, não do rascunho
+        const transcript = result[0].transcript.trim();
+        if (transcript) { this.lastHeard = transcript; this.emit(); }
+        const cmd = parseCommand(transcript);
         if (!cmd) continue;
         const now = Date.now();
         if (now - this.lastFireAt < DEBOUNCE_MS) continue;
