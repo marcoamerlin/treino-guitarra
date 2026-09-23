@@ -309,7 +309,11 @@ export function scheduleTab(ctx, dest, spec, bpm, t0, samples = null) {
       if (sample) {
         // Abafado (palm mute): a nota termina um pouco antes da próxima batida, o que deixa as pausas limpas.
         // Limpo: a nota ressoa e vai sumindo devagar; só é cortada rápido se outra nota entra na mesma corda.
-        const natural = sustained ? 2.2 : muted ? step * 0.92 : Math.min(2.4, step * 4);
+        // Notas sustentadas (bend/vibrato) soam baixo demais na média se ficarem tocando por muito
+        // tempo: a gravação decai naturalmente, e o ataque (o que foi calibrado) já passou. 1s dá
+        // tempo de sobra para o bend (completa em 0,4s) ou o vibrato (entra até 0,5s) aparecerem
+        // claramente, sem arrastar um final quase inaudível — medido, não só ouvido de longe.
+        const natural = sustained ? 1.0 : muted ? step * 0.92 : Math.min(1.2, step * 4);
         const cutIn = cutAt.get(`${i}:${n}`) - start;
         const cutShort = cutIn < natural;
         const length = cutShort ? Math.max(0.03, cutIn + 0.005) : natural;

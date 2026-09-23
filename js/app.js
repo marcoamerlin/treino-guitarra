@@ -297,8 +297,12 @@ function intervalExplorerView() {
     const rp = store.getPref('intervalRoot', 9);
     root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
     root.querySelector('.scale-name').textContent = `Intervalos a partir de ${NOTE_NAMES[rp]}`;
-    const notes = fretboardIntervals(rp, 0, 12);
-    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart: 0, fretEnd: 12, dots: notes });
+    // Casas 1–12, sem a corda solta (casa 0): é um "quadro móvel" — a ideia é pensar em padrão que
+    // desliza pelo braço, e a casa 0 é uma âncora fixa que não ajuda nisso. Na tônica mostramos "T"
+    // (com cor própria, verde, a mesma de "ativo/concluído" no resto do app) em vez de "1", pra ela
+    // se destacar dos outros intervalos de longe, não só pela cor quase igual do dourado.
+    const notes = fretboardIntervals(rp, 1, 12).map((n) => (n.root ? { ...n, name: 'T' } : n));
+    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart: 1, fretEnd: 12, dots: notes });
   }
 
   draw();

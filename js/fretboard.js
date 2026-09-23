@@ -46,8 +46,17 @@ export function fretboardSVG({ fretStart = 0, fretEnd = 12, dots = [], muted = [
   dots.forEach((dot) => {
     const x = xOf(dot.fret);
     const y = yOf(dot.string);
-    svg += `<circle class="fb-dot${dot.root ? ' fb-root' : ''}" cx="${x}" cy="${y}" r="${dot.root ? 10 : 9}"/>`;
-    svg += `<text class="fb-note" x="${x}" y="${y + 4}" text-anchor="middle">${dot.name}</text>`;
+    // Nomes duplos (ex.: "4#/5b") não cabem numa linha só dentro do círculo — em vez de cortar
+    // (virava "#/5", ilegível), quebramos em duas linhas menores e damos um pouco mais de raio.
+    const parts = dot.name.split('/');
+    const r = dot.root ? 10 : parts.length > 1 ? 11 : 9;
+    svg += `<circle class="fb-dot${dot.root ? ' fb-root' : ''}" cx="${x}" cy="${y}" r="${r}"/>`;
+    if (parts.length > 1) {
+      svg += `<text class="fb-note fb-note-sm" x="${x}" y="${y - 1}" text-anchor="middle">${parts[0]}</text>`;
+      svg += `<text class="fb-note fb-note-sm" x="${x}" y="${y + 8}" text-anchor="middle">${parts[1]}</text>`;
+    } else {
+      svg += `<text class="fb-note" x="${x}" y="${y + 4}" text-anchor="middle">${dot.name}</text>`;
+    }
   });
 
   return svg + '</svg>';

@@ -50,6 +50,15 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   composto não seguia uma regra (a mesma distância aparecia das duas formas em células diferentes).
   interval_ea em exercises.js (categoria "Teoria") é um exercício de reconhecimento de intervalo
   usando esse mesmo cálculo.
+- Quadro de intervalos (app.js `intervalExplorerView` + `fretboard.js`): mostra só as casas 1–12
+  (sem corda solta/casa 0) — é um "quadro móvel", a casa 0 é uma âncora fixa que atrapalha a ideia
+  de padrão que desliza pelo braço (pedido do usuário em 2026-09-23). A tônica aparece como "T" em
+  verde (`--led-green`, a mesma cor de "ativo/concluído" no resto do app) em vez de "1" em
+  `--brass`, que era próximo demais do dourado dos outros pontos (`--lcd-text`) para diferenciar
+  de longe — a troca é só de exibição, feita em app.js; `theory.js` continua devolvendo "1" (os
+  testes de fretboardIntervals checam esse nome). Nomes duplos ("4#/5b", "5#/6-") não cabem numa
+  linha só dentro do círculo e ficavam cortados (ex.: "#/5b" virava ilegível); `fretboardSVG` agora
+  detecta o "/" e desenha em duas linhas menores, com o círculo um pouco maior nesses casos.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
@@ -74,6 +83,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - A velocidade (BPM) é **por exercício**, não por dia, e continua de uma semana para a outra.
   Regra: 3 limpos seguidos = +4 BPM; 2 erros seguidos = −4 BPM.
 - Todos os dias estão detalhados. `draft: true` marca um exercício ainda em resumo (hoje nenhum). Volume por tablatura: `gain` (só para os lentos).
+  Nas notas sustentadas (bend/vibrato) o `sample.norm` calibra só o ataque, mas essas notas ficam
+  presas a ~0,92s pelo corte `cutAt`/`cutShort` (a próxima nota na mesma corda), então o decaimento
+  natural da gravação domina a média e o som sai baixo mesmo com o mesmo `gain` de outros exercícios
+  — medido via RMS/pico num `OfflineAudioContext` contra a referência já aprovada (riff1, RMS≈0,21,
+  pico≈0,82) e corrigido em 2026-09-23 subindo `gain` nos 4 exercícios de quarta (bends/vibrato):
+  bend_1 (1.6→6 / 1.6→5), bend_rel (2.2→11 / 2→10), vibrato (2.2→7), bend_lick (1.6→5 / 1.6→4).
 - Ao adicionar arquivo novo ao app, incluí-lo em `SHELL` no `sw.js` e subir `CACHE`.
 
 ## Pendências

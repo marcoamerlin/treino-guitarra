@@ -327,8 +327,8 @@ export const EXERCISES = {
     min: 8,
     bpm: { start: 50, goal: 80 },
     tabs: [
-      dslTab('Corda Sol: nota-alvo (casa 9) e bend da casa 7 até ela', 'G9 G7b9 G9 G7b9 G9 G7b9', { perBeat: 1, gain: 1.6 }),
-      dslTab('Corda Si: nota-alvo (casa 10) e bend da casa 8 até ela', 'B10 B8b10 B10 B8b10 B10 B8b10', { perBeat: 1, gain: 1.6 }),
+      dslTab('Corda Sol: nota-alvo (casa 9) e bend da casa 7 até ela', 'G9 G7b9 G9 G7b9 G9 G7b9', { perBeat: 1, gain: 6 }),
+      dslTab('Corda Si: nota-alvo (casa 10) e bend da casa 8 até ela', 'B10 B8b10 B10 B8b10 B10 B8b10', { perBeat: 1, gain: 5 }),
     ],
     steps: [
       'Bend de <strong>um tom</strong> sobe a nota o equivalente a duas casas. Na corda Sol: casa 7 → soar como a casa 9.',
@@ -348,8 +348,8 @@ export const EXERCISES = {
     min: 6,
     bpm: { start: 50, goal: 80 },
     tabs: [
-      dslTab('Corda Sol: 7 → 9 → 7', 'G7b9r7 G7b9r7 G7b9r7', { perBeat: 0.5, gain: 2.2 }),
-      dslTab('Corda Si: 8 → 10 → 8', 'B8b10r8 B8b10r8 B8b10r8', { perBeat: 0.5, gain: 2 }),
+      dslTab('Corda Sol: 7 → 9 → 7', 'G7b9r7 G7b9r7 G7b9r7', { perBeat: 0.5, gain: 11 }),
+      dslTab('Corda Si: 8 → 10 → 8', 'B8b10r8 B8b10r8 B8b10r8', { perBeat: 0.5, gain: 10 }),
     ],
     steps: [
       'Faça o bend de 1 tom, segure o alvo e <strong>volte devagar</strong> até a nota original, sem soltar a corda de vez.',
@@ -364,7 +364,7 @@ export const EXERCISES = {
     cat: 'tecnica',
     min: 6,
     bpm: { start: 50, goal: 80 },
-    tabs: [dslTab('Notas longas com vibrato (2 tempos cada)', 'e8~ B8~ G7~ D7~', { perBeat: 0.5, gain: 2.2 })],
+    tabs: [dslTab('Notas longas com vibrato (2 tempos cada)', 'e8~ B8~ G7~ D7~', { perBeat: 0.5, gain: 7 })],
     steps: [
       'Vibrato é subir e descer a altura da nota rapidamente, várias vezes, sem sair muito da afinação.',
       'Sustente a nota com o dedo firme e gire o <strong>pulso</strong>, como quem gira uma maçaneta. O movimento vem do antebraço, não do dedo isolado.',
@@ -380,8 +380,8 @@ export const EXERCISES = {
     min: 15,
     bpm: { start: 60, goal: 90 },
     tabs: [
-      dslTab('Frase 1 — lamento: sobe e termina com bend e vibrato', 'e5 B8 B8b10~', { perBeat: 1, gain: 1.6 }),
-      dslTab('Frase 2 — pergunta e resposta: bend com retorno e vibrato na raiz', 'D7 G7b9r7 G5 D7~', { perBeat: 1, gain: 1.6 }),
+      dslTab('Frase 1 — lamento: sobe e termina com bend e vibrato', 'e5 B8 B8b10~', { perBeat: 1, gain: 5 }),
+      dslTab('Frase 2 — pergunta e resposta: bend com retorno e vibrato na raiz', 'D7 G7b9r7 G5 D7~', { perBeat: 1, gain: 4 }),
     ],
     steps: [
       '<strong>Frase 1:</strong> toque o Lá (Mi fina, casa 5), o Sol (Si, casa 8) e depois a mesma nota Sol fazendo o bend de 1 tom, terminando com vibrato na nota alta.',
