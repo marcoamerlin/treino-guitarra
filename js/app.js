@@ -7,7 +7,7 @@ import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
-import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, fretboardNotes } from './theory.js';
+import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, fretboardNotes, fretboardIntervals } from './theory.js';
 import { fretboardSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
@@ -180,7 +180,7 @@ function metronomeView() {
 const scalesOverlay = $('#scalesView');
 const scalesBody = $('#scalesBody');
 
-const BRACO_TABS = { scales: 'Escalas', chords: 'Acordes' };
+const BRACO_TABS = { scales: 'Escalas', chords: 'Acordes', intervals: 'Intervalos' };
 
 function openScales() { renderBraco(); scalesOverlay.classList.add('open'); }
 function closeScales() { scalesOverlay.classList.remove('open'); }
@@ -197,7 +197,8 @@ function renderBraco() {
     chip.addEventListener('click', () => { store.setPref('fbTab', key); renderBraco(); });
     tabRow.appendChild(chip);
   });
-  wrap.querySelector('.fb-tab-body').appendChild(tab === 'chords' ? chordExplorerView() : scaleExplorerView());
+  const view = tab === 'chords' ? chordExplorerView() : tab === 'intervals' ? intervalExplorerView() : scaleExplorerView();
+  wrap.querySelector('.fb-tab-body').appendChild(view);
   scalesBody.replaceChildren(wrap);
 }
 
@@ -267,6 +268,37 @@ function scaleExplorerView() {
         ? 'Toque numa posição (1 a 5) para ver só aquela caixa. A raiz aparece com o anel dourado.'
         : `Posição ${m} de ${pos.length}: casas ${pos[m - 1].start} a ${pos[m - 1].end}. A última casa desta posição é a primeira da próxima — é por onde elas se conectam no braço.`)
       : 'Escala de 7 notas: aqui só o braço inteiro, sem posições (as janelas entre graus ficam curtas demais para virar uma caixa de mão).';
+  }
+
+  draw();
+  return root;
+}
+
+// Mostra o intervalo de cada casa do braço em relação à raiz escolhida — as 12 posições
+// cromáticas, sem filtrar por escala (é o "quadro móvel de intervalos", só que na tela).
+function intervalExplorerView() {
+  const rootPc = store.getPref('intervalRoot', 9); // A
+
+  const root = el('div');
+  root.innerHTML =
+    '<div class="chip-row root-row"></div>' +
+    '<div class="scale-info"><span class="scale-name"></span></div>' +
+    '<div class="fret-scroll"><div class="fret-inner"></div></div>' +
+    '<p class="tip">Escolha uma nota, toque nela e depois numa casa vizinha: o rótulo mostra exatamente o intervalo entre as duas. Comece pela própria casa da tônica e pelas vizinhas, na corda ao lado — é o mesmo exercício do quadro de intervalos, só que aqui o braço inteiro já vem calculado.</p>';
+
+  const rootRow = root.querySelector('.root-row');
+  NOTE_NAMES.forEach((name, pc) => {
+    const chip = el('button', `chip${pc === rootPc ? ' on' : ''}`, name);
+    chip.addEventListener('click', () => { store.setPref('intervalRoot', pc); draw(); });
+    rootRow.appendChild(chip);
+  });
+
+  function draw() {
+    const rp = store.getPref('intervalRoot', 9);
+    root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
+    root.querySelector('.scale-name').textContent = `Intervalos a partir de ${NOTE_NAMES[rp]}`;
+    const notes = fretboardIntervals(rp, 0, 12);
+    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart: 0, fretEnd: 12, dots: notes });
   }
 
   draw();

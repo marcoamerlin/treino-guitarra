@@ -20,6 +20,29 @@ export const SCALES = {
 // vizinhos fica estreita demais (às vezes 1 casa só) para ser uma posição de mão de verdade.
 export const hasPositions = (scaleKey) => SCALES[scaleKey].intervals.length <= 5;
 
+// Nome de cada intervalo (0 a 11 semitons a partir da tônica). Alguns têm duas leituras comuns
+// (mesma distância, nomes diferentes): 4#/5b é a mesma casa (trítono), só muda o contexto.
+// Conferido contra um quadro de intervalos de verdade (célula por célula, por cálculo, não de
+// cabeça) — ver histórico do projeto. Números "compostos" (9, 11, 13 = 2, 4, 6 numa oitava acima)
+// não entram aqui de propósito: é a mesma nota, e o quadro original os usava sem uma regra fixa
+// (escolha do professor, célula a célula) — então ficamos só com o nome básico, sem ambiguidade.
+export const INTERVAL_NAMES = ['1', '2-', '2', '3-', '3', '4', '4#/5b', '5', '5#/6-', '6', '7', '7+'];
+export const intervalName = (semitones) => INTERVAL_NAMES[((semitones % 12) + 12) % 12];
+
+// O intervalo de cada casa do braço em relação à raiz escolhida — não filtra por escala,
+// mostra as 12 posições cromáticas (é o "quadro móvel de intervalos").
+export function fretboardIntervals(rootPc, fretStart, fretEnd) {
+  const notes = [];
+  for (let string = 0; string < 6; string++) {
+    for (let fret = fretStart; fret <= fretEnd; fret++) {
+      const pc = (OPEN_PC[string] + fret) % 12;
+      const relative = ((pc - rootPc) % 12 + 12) % 12;
+      notes.push({ string, fret, pc, relative, root: relative === 0, name: intervalName(relative) });
+    }
+  }
+  return notes;
+}
+
 export const noteName = (pc) => NOTE_NAMES[((pc % 12) + 12) % 12];
 
 // Todas as notas da escala visíveis entre fretStart e fretEnd, em todas as cordas.

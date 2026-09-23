@@ -16,6 +16,7 @@ export const CATEGORIES = {
   aplicacao: 'Aplicação',
   ritmo: 'Ritmo',
   jam: 'Jam e gravação',
+  teoria: 'Teoria',
   descanso: 'Descanso',
 };
 
@@ -196,6 +197,31 @@ export const EXERCISES = {
       'Metrônomo entre 90 e 110 BPM. Foque em soar sempre igual, sem variar a força.',
     ],
     tips: [],
+  },
+
+  // ---- Teoria: intervalos ---------------------------------------------------------------------
+
+  interval_ea: {
+    title: 'Intervalos — cordas Mi grave e Lá',
+    subtitle: 'Reconhecer 4ª, 3ª maior, 3ª menor, 2ª maior e 2ª menor de ouvido',
+    cat: 'teoria',
+    min: 10,
+    tabs: [dslTab(
+      'Tônica (Lá) e cada intervalo, sempre voltando à tônica para comparar',
+      'E5 A5 E5 A4 E5 A3 E5 A2 E5 A1 E5 A0', { perBeat: 2, voice: 'clean' },
+    )],
+    steps: [
+      'Toque o Lá na corda Mi grave, casa 5, e deixe soar — essa é a <strong>tônica</strong> de hoje.',
+      'Toque a mesma casa (5) na corda Lá, ao lado. É uma <strong>4ª justa</strong>. Volte para a tônica e compare de novo.',
+      'Uma casa abaixo (4) na corda Lá é uma <strong>3ª maior</strong>. Depois, casa 3 é <strong>3ª menor</strong> — repare como a 3ª menor soa mais "triste" que a maior.',
+      'Casa 2 é <strong>2ª maior</strong>, casa 1 é <strong>2ª menor</strong>, e a corda Lá solta (casa 0) é a <strong>mesma nota</strong> da tônica, uma oitava não muda — é o mesmo Lá.',
+      'Regra prática nessas duas cordas: a <strong>mesma casa</strong> nas cordas vizinhas é sempre uma 4ª. Cada casa a menos na corda de cima tira 1 semitom do intervalo.',
+      'Repita a sequência de trás para frente (da 2ª menor até a 4ª), sempre voltando à tônica antes de cada nota nova.',
+    ],
+    tips: [
+      'Não precisa de metrônomo hoje: o objetivo é ouvir e reconhecer, não velocidade.',
+      'Quando estiver seguro nessas duas cordas, use o explorador de "Intervalos" (botão Braço, no topo) para ver o mesmo padrão em qualquer nota, em qualquer casa do braço.',
+    ],
   },
 
   // ---- Terça: legato ------------------------------------------------------------------------

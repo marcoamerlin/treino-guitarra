@@ -6,6 +6,7 @@ import { CHORDS, chordCol } from '../js/data/chords.js';
 import { WEEK } from '../js/data/plans.js';
 import { parseFret } from '../js/tab-player.js';
 import { parseTab } from '../js/tab-dsl.js';
+import { intervalName } from '../js/theory.js';
 
 const allTabs = Object.entries(EXERCISES).flatMap(([id, ex]) => (ex.tabs || []).map((tab) => ({ id, tab })));
 
@@ -151,4 +152,17 @@ test('o service worker guarda offline todo arquivo .js do app (js/ e js/data/)',
   ];
   const missing = files.filter((f) => !sw.includes("'" + f + "'"));
   assert.deepEqual(missing, [], 'faltam no SHELL do sw.js: ' + missing.join(', '));
+});
+
+test('exercício de intervalos (Mi grave/Lá): a sequência toca exatamente os intervalos que o passo a passo descreve', () => {
+  const tab = EXERCISES.interval_ea.tabs[0];
+  const rootMidi = 5 + 40; // E grave (MIDI 40) + casa 5 = A
+  // sequência real do dslTab: E5 A5 E5 A4 E5 A3 E5 A2 E5 A1 E5 A0
+  const expected = ['1', '4', '1', '3', '1', '3-', '1', '2', '1', '2-', '1', '1'];
+  const got = tab.play.cols.map((col) => {
+    const [[string, fret]] = col;
+    const midi = [64, 59, 55, 50, 45, 40][string] + Number(fret); // e B G D A E
+    return intervalName(((midi - rootMidi) % 12 + 12) % 12);
+  });
+  assert.deepEqual(got, expected);
 });

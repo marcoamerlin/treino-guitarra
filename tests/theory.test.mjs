@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   NOTE_NAMES, OPEN_PC, SCALES, hasPositions, noteName, fretboardNotes, anchorFret, positionsOf,
+  INTERVAL_NAMES, intervalName, fretboardIntervals,
 } from '../js/theory.js';
 
 const PC = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
@@ -89,4 +90,53 @@ test('a pentatônica maior de Dó (C D E G A) é a mesma forma da pentatônica m
   const c = fretboardNotes(PC.C, 'pentMajor', 0, 12).map((n) => n.name).sort();
   const a = fretboardNotes(PC.A, 'pentMinor', 0, 12).map((n) => n.name).sort();
   assert.deepEqual(c, a);
+});
+
+test('INTERVAL_NAMES tem exatamente 12 posições — 13 foi um bug real encontrado nesta sessão', () => {
+  assert.equal(INTERVAL_NAMES.length, 12);
+  assert.equal(intervalName(0), '1');
+  assert.equal(intervalName(11), '7+');
+  assert.equal(intervalName(12), '1'); // uma oitava acima, mesmo intervalo
+  assert.equal(intervalName(-1), '7+'); // uma casa abaixo da tônica é a 7ª maior de baixo
+});
+
+test('fretboardIntervals: a própria raiz tem intervalo "1" e aparece marcada como root', () => {
+  const notes = fretboardIntervals(9, 0, 12); // A
+  const roots = notes.filter((n) => n.root);
+  roots.forEach((n) => assert.equal(n.name, '1'));
+  assert.ok(roots.length >= 2); // A aparece em mais de uma corda/casa dentro de 0–12
+});
+
+// Conferido célula por célula contra um quadro de intervalos real (72 posições, tônica = Lá na
+// casa 5 da corda Mi grave — o mesmo exemplo que o usuário mediu na própria guitarra). Nomes
+// duplos (ex.: "4#/5b") contam como certos se qualquer um dos dois lados bater.
+test('fretboardIntervals bate com um quadro de intervalos real, casa por casa (72 células)', () => {
+  // por casa (1–12): [E, A, D, G, B, e] — mesma ordem grave→aguda do quadro original
+  const REFERENCE = [
+    ['6-', '2-', '4#/5b', '7+', '3-', '6-'],
+    ['6', '2', '5', '1', '3', '6'],
+    ['7', '3-', '6-/5#', '2-', '4', '7'],
+    ['7+', '3', '6', '2', '4#/5b', '7+'],
+    ['1', '4', '7', '3-', '5', '1'],
+    ['2-', '4#/5b', '7+', '3', '5#/6-', '2-'],
+    ['2', '5', '1', '4', '6', '2'],
+    ['3-', '6-', '2-', '4#/5b', '7', '3-'],
+    ['3', '6', '2', '5', '7+', '3'],
+    ['4', '7', '3-', '6-', '1', '4'],
+    ['4#/5b', '7+', '3', '6', '2-', '4#/5b'],
+    ['5', '1', '4', '7', '2', '5'],
+  ];
+  const rootPc = 9; // A na casa 5 da corda E grave
+  const stringOrder = [5, 4, 3, 2, 1, 0]; // E A D G B e
+  REFERENCE.forEach((expectedRow, i) => {
+    const fret = i + 1;
+    const notes = fretboardIntervals(rootPc, fret, fret);
+    stringOrder.forEach((string, col) => {
+      const computed = notes.find((n) => n.string === string).name;
+      const expectedParts = expectedRow[col].split('/');
+      const computedParts = computed.split('/');
+      const overlap = computedParts.some((p) => expectedParts.includes(p));
+      assert.ok(overlap, `casa ${fret}, corda ${string}: calculado "${computed}", esperado "${expectedRow[col]}"`);
+    });
+  });
 });

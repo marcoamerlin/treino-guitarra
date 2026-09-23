@@ -41,6 +41,15 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   canal se preciso, com tempo limite de 800ms para não travar caso `resume()` nunca responda. Usado
   por metronome.js e tab-player.js — qualquer novo produtor de som deve passar por ele também.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
+- `js/theory.js`: também tem INTERVAL_NAMES/intervalName/fretboardIntervals (aba "Intervalos" do
+  explorador: intervalo de cada casa em relação a uma raiz, sem filtrar por escala). Cross-checado
+  célula a célula (72 posições) contra um quadro de intervalos real do usuário — ver
+  tests/theory.test.mjs. Um bug real: o array tinha 13 nomes para 12 semitons (5# e 6- em posições
+  separadas, quando são o mesmo intervalo de 8 semitons); corrigido para "5#/6-" numa posição só.
+  Números compostos (9/11/13) não são gerados: no material original a escolha entre básico e
+  composto não seguia uma regra (a mesma distância aparecia das duas formas em células diferentes).
+  interval_ea em exercises.js (categoria "Teoria") é um exercício de reconhecimento de intervalo
+  usando esse mesmo cálculo.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
