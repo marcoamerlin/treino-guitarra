@@ -6,6 +6,7 @@ import { buildTab } from './tab.js';
 import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
+import { voiceCommand, voiceSupported } from './voice-command.js';
 import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, fretboardNotes } from './theory.js';
 import { fretboardSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
@@ -459,8 +460,21 @@ function speedBox(id, ex) {
       '<button class="run-btn bad" data-run="bad">✗ Errei <small></small></button>' +
     '</div>' +
     '<button class="metro-btn" data-metro><span class="beat-led"></span><span class="label"></span></button>' +
+    (voiceSupported
+      ? '<button class="metro-btn voice-btn" data-voice><span class="mic-dot"></span><span class="label"></span></button>'
+      : '') +
     '<div data-history></div>' +
     `<div class="rule">3 limpos seguidos = +${step} BPM · 2 erros seguidos = −${step} BPM</div>`;
+
+  // Registra uma tentativa (limpa ou errada) — usado tanto pelos botões quanto pela voz.
+  const run = (ok) => {
+    const event = store.recordRun(id, cfg, ok, todayISO);
+    const bpm = store.getSpeed(id, cfg).bpm;
+    if (event === 'up') toast(`Subiu para ${bpm} BPM. Bom trabalho!`);
+    if (event === 'down') toast(`Voltou para ${bpm} BPM. Limpeza primeiro.`);
+    if (event && metronome.running) metronome.setBpm(bpm);
+    pageRedrawers.forEach((fn) => fn());
+  };
 
   const update = () => {
     const speed = store.getSpeed(id, cfg);
@@ -469,6 +483,18 @@ function speedBox(id, ex) {
     box.querySelector('.bad small').textContent = `${speed.errors}/2`;
     box.querySelector('[data-metro]').classList.toggle('on', metronome.running);
     box.querySelector('[data-metro] .label').textContent = metronome.running ? 'Parar metrônomo' : `Tocar metrônomo a ${speed.bpm} BPM`;
+
+    const voiceBtn = box.querySelector('[data-voice]');
+    if (voiceBtn) {
+      const listening = voiceCommand.isActive(id);
+      voiceBtn.classList.toggle('on', listening);
+      voiceBtn.classList.toggle('bad', !listening && voiceCommand.state === 'denied');
+      voiceBtn.querySelector('.mic-dot').classList.toggle('live', listening);
+      voiceBtn.querySelector('.label').textContent = listening
+        ? 'Ouvindo… diga "limpo" ou "errei"'
+        : voiceCommand.state === 'denied' ? 'Permissão de microfone negada'
+        : '🎙️ Ativar comando de voz';
+    }
 
     const history = speed.history.slice(-12);
     const holder = box.querySelector('[data-history]');
@@ -491,14 +517,13 @@ function speedBox(id, ex) {
       store.adjustSpeed(id, cfg, Number(btn.dataset.delta), todayISO);
       if (metronome.running) metronome.setBpm(store.getSpeed(id, cfg).bpm);
     } else if (btn.dataset.run) {
-      const event = store.recordRun(id, cfg, btn.dataset.run === 'ok', todayISO);
-      const bpm = store.getSpeed(id, cfg).bpm;
-      if (event === 'up') toast(`Subiu para ${bpm} BPM. Bom trabalho!`);
-      if (event === 'down') toast(`Voltou para ${bpm} BPM. Limpeza primeiro.`);
-      if (event && metronome.running) metronome.setBpm(bpm);
+      run(btn.dataset.run === 'ok');
+      return; // run() já redesenha
     } else if ('metro' in btn.dataset) {
       if (metronome.running) metronome.stop();
       else { tabPlayer.stop(); metronome.setBpm(store.getSpeed(id, cfg).bpm); metronome.start(); }
+    } else if ('voice' in btn.dataset) {
+      voiceCommand.toggle(id, (cmd) => run(cmd === 'ok'));
     }
     pageRedrawers.forEach((fn) => fn()); // inclui os botões "Ouvir", que mostram o BPM atual
   });
@@ -888,6 +913,10 @@ metronome.subdivide = store.getPref('metroSub', false);
 
 tabPlayer.onChange(() => pageRedrawers.forEach((fn) => fn()));
 practiceTimer.onChange(() => pageRedrawers.forEach((fn) => fn()));
+voiceCommand.onChange(() => {
+  if (voiceCommand.state === 'denied') toast('O celular negou o microfone. Ative-o nas permissões do site.');
+  pageRedrawers.forEach((fn) => fn());
+});
 metronome.on('change', () => {
   if (metronome.running) tabPlayer.stop(); // não tocam juntos
   updateMetroPill();

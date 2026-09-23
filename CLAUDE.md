@@ -30,6 +30,11 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/merge.js`: combina dados de dois aparelhos (funções puras). `js/sync-core.js`: motor de sync com
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
+- `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
+  usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem
+  do Google) e pode disputar com o som do amplificador. parseCommand() é pura/testável; o resto só
+  roda no navegador de verdade (não dá para testar reconhecimento de fala no CI). Opt-in por
+  exercício, só um ativo por vez, como o metrônomo.
 - `js/audio-context.js`: AudioContext resistente a travas (Android às vezes prende o canal de áudio numa
   troca de saída — cabo/fone/Bluetooth — ou após tempo em segundo plano, sem erro, só silêncio; visto
   na prática em 2026-09-23). `ensureRunningContext()` confere o estado antes de cada som e recria o
