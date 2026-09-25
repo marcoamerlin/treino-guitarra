@@ -112,6 +112,37 @@ seq4Cols.push([[seq4Base[seq4Base.length - 1].string, seq4Base[seq4Base.length -
 const seq4Tab = makeTab('Grupos de 4, subindo (Dó maior, 7ª posição)', seq4Cols,
   { pick: alternate(seq4Cols.length) }, { perBeat: 2, voice: 'clean' });
 
+// Cromático "em cascata": dedos 1-2-3-4 em cada corda, mas a casa inicial cai 1 a cada corda —
+// exceto na virada Sol→Si, que fica igual (compensa a 3ª maior da afinação ali; sem essa exceção
+// o padrão desalinha, o mesmo motivo do "salto" do CAGED e do 3nps). Sobe Mi grave→Mi aguda,
+// desce Mi aguda→Mi grave uma casa acima da subida, fechando com uma nota extra na casa inicial
+// (Mi grave, casa 5). Exercício 3 do mesmo vídeo de referência do seq4 — conferido corda por
+// corda com o usuário (ver CLAUDE.md); só a repetição Sol=Si na descida foi extrapolada da
+// subida (o usuário confirmou aquilo, isto aqui espelha), a confirmar quando o áudio for ouvido.
+const cascadeUp = [
+  [5, 5], [5, 6], [5, 7], [5, 8], // E
+  [4, 4], [4, 5], [4, 6], [4, 7], // A
+  [3, 3], [3, 4], [3, 5], [3, 6], // D
+  [2, 2], [2, 3], [2, 4], [2, 5], // G
+  [1, 2], [1, 3], [1, 4], [1, 5], // B
+  [0, 1], [0, 2], [0, 3], [0, 4], // e
+].map((n) => [n]);
+const cascadeDown = [
+  [0, 5], [0, 4], [0, 3], [0, 2], // e
+  [1, 6], [1, 5], [1, 4], [1, 3], // B
+  [2, 6], [2, 5], [2, 4], [2, 3], // G
+  [3, 7], [3, 6], [3, 5], [3, 4], // D
+  [4, 8], [4, 7], [4, 6], [4, 5], // A
+  [5, 9], [5, 8], [5, 7], [5, 6], [5, 5], // E — nota extra, fecha na casa inicial
+].map((n) => [n]);
+const cascadeCols = [...cascadeUp, ...cascadeDown];
+const cascadeTab = makeTab(
+  'Sobe Mi grave → Mi aguda, desce uma casa acima e fecha na tônica',
+  cascadeCols,
+  { pick: alternate(cascadeCols.length) },
+  { perBeat: 2, voice: 'clean' },
+);
+
 // ---- Exercícios ------------------------------------------------------------
 
 export const EXERCISES = {
@@ -300,6 +331,26 @@ export const EXERCISES = {
     tips: [
       'A troca de corda é onde mais atrasa. Pratique bem devagar só as transições (ex.: só o final de uma corda + começo da próxima) antes de tentar a sequência inteira rápida.',
       'Se perder a conta de qual grupo está tocando, pare e volte para a tônica (Mi grave, casa 8) — é o ponto de referência mais fácil de achar de novo.',
+    ],
+  },
+
+  cascade4: {
+    title: 'Cromático em cascata',
+    subtitle: 'Dedos 1-2-3-4 subindo o braço, corda por corda',
+    cat: 'tecnica',
+    min: 8,
+    bpm: { start: 55, goal: 95 },
+    tabs: [cascadeTab],
+    steps: [
+      'Dedos <strong>1-2-3-4</strong>, uma casa por dedo, em cada corda — igual ao cromático de aquecimento, mas agora nas 6 cordas seguidas, e a casa inicial cai 1 a cada corda.',
+      'Começa na corda <strong>Mi grave, casa 5</strong> (dedo 1). Depois Lá casa 4, Ré casa 3, Sol casa 2, Si casa 2 <strong>de novo</strong> (não cai — aqui a afinação da Si compensa), e Mi aguda casa 1.',
+      'No topo (Mi aguda, casa 4), inverte: desce pelas mesmas 6 cordas na ordem contrária, mas uma casa <strong>acima</strong> de onde subiu em cada corda (Mi aguda 5-4-3-2, Si 6-5-4-3, Sol 6-5-4-3, Ré 7-6-5-4, Lá 8-7-6-5, Mi grave 9-8-7-6).',
+      'Termina com uma nota extra na Mi grave, casa 5 — a mesma casa de onde começou, fechando o ciclo.',
+      'Palhetada alternada do início ao fim.',
+    ],
+    tips: [
+      'A virada Sol→Si (que não cai de casa) é onde mais gente erra de cabeça. Pratique essa transição isolada antes da sequência inteira.',
+      'É praticamente o mesmo desenho da mão inteira, só deslizando 1 casa a cada corda — pense nisso como um só movimento contínuo, não 6 posições separadas.',
     ],
   },
 

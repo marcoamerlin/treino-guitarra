@@ -68,6 +68,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   tirando o Si abaixo da tônica e deslizando uma janela de 4 notas. Bate 100% com o ditado do
   usuário (teste em tabs.test.mjs). Só essa posição por enquanto — as outras 3 que o vídeo só cita
   de boca (não mostra a tablatura) ficam pendentes.
+- `cascade4` em exercises.js: exercício 3 do mesmo vídeo — cromático "em cascata" (dedos 1-2-3-4,
+  casa inicial cai 1 a cada corda, exceto na virada Sol→Si que fica igual, compensando a 3ª maior
+  da afinação ali) subindo Mi grave→Mi aguda e descendo uma casa acima, fechando com nota extra na
+  casa inicial. Conferido corda por corda com o usuário; a repetição Sol=Si na volta (descida) foi
+  extrapolada por simetria da subida (que o usuário confirmou), não checada nota a nota como o
+  resto — sinalizado no código, a confirmar quando o usuário ouvir.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as

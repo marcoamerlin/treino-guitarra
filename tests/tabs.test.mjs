@@ -178,3 +178,13 @@ test('seq4 (grupos de 4, Dó maior 7ª posição): bate nota a nota com a sequê
   const got = EXERCISES.seq4.tabs[0].play.cols.map(([[string, fret]]) => STR[string] + fret);
   assert.deepEqual(got, expected);
 });
+
+test('cascade4 (cromático em cascata): sobe Mi grave→Mi aguda, desce 1 casa acima e fecha na tônica', () => {
+  const STR = ['e', 'B', 'G', 'D', 'A', 'E'];
+  const expected = (
+    'E5 E6 E7 E8 A4 A5 A6 A7 D3 D4 D5 D6 G2 G3 G4 G5 B2 B3 B4 B5 e1 e2 e3 e4 '
+    + 'e5 e4 e3 e2 B6 B5 B4 B3 G6 G5 G4 G3 D7 D6 D5 D4 A8 A7 A6 A5 E9 E8 E7 E6 E5'
+  ).split(' ');
+  const got = EXERCISES.cascade4.tabs[0].play.cols.map(([[string, fret]]) => STR[string] + fret);
+  assert.deepEqual(got, expected);
+});
