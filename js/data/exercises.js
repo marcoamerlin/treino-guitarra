@@ -7,6 +7,7 @@
 import { buildTab } from '../tab.js';
 import { chordCol } from './chords.js';
 import { parseTab } from '../tab-dsl.js';
+import { voicingArray } from '../chord-shapes.js';
 
 export const CATEGORIES = {
   aquecimento: 'Aquecimento',
@@ -76,6 +77,21 @@ const progCols = ['A5', 'G5', 'F5', 'E5'].flatMap((id) => Array.from({ length: 8
 const phraseCols = [[[0, 8]], [[0, 5]], [[1, 8]], [[1, 5]], [[2, '7b9r7']]];
 const phraseTab = makeTab('Frase', phraseCols,
   { pick: ['v', '^', 'v', '^', 'v'] }, { perBeat: 2, voice: 'clean' });
+
+// CAGED em Lá maior, na ordem em que as formas sobem o braço (calculado com voicingArray, a
+// mesma função do explorador — nunca de cabeça: A fica aberta (casas 0–2), G em torno da casa
+// 2–5, E em barra na 5ª, D na 7ª e C bem alto, na 9ª–12ª). Um compasso (4 tempos) por forma.
+const CAGED_ORDER = ['A', 'G', 'E', 'D', 'C'];
+const cagedCol = (shape) => voicingArray(shape, 'major', 9) // 9 = Lá
+  .map((fret, string) => (fret == null ? null : [string, fret]))
+  .filter(Boolean);
+const cagedCols = CAGED_ORDER.flatMap((shape) => Array.from({ length: 4 }, () => cagedCol(shape)));
+const cagedTab = makeTab(
+  'As 5 formas em sequência, um compasso cada: A · G · E · D · C',
+  cagedCols,
+  { bar: 4, count: ['1', '2', '3', '4'], pick: alternate(cagedCols.length) },
+  { perBeat: 1, voice: 'clean' },
+);
 
 // ---- Exercícios ------------------------------------------------------------
 
@@ -221,6 +237,28 @@ export const EXERCISES = {
     tips: [
       'Não precisa de metrônomo hoje: o objetivo é ouvir e reconhecer, não velocidade.',
       'Quando estiver seguro nessas duas cordas, use o explorador de "Intervalos" (botão Braço, no topo) para ver o mesmo padrão em qualquer nota, em qualquer casa do braço.',
+    ],
+  },
+
+  // ---- Teoria: CAGED ---------------------------------------------------------------------------
+
+  caged_seq: {
+    title: 'CAGED — sequência de Lá maior',
+    subtitle: 'As 5 formas do mesmo acorde, subindo o braço',
+    cat: 'teoria',
+    min: 10,
+    bpm: { start: 50, goal: 90 },
+    tabs: [cagedTab],
+    steps: [
+      'É o <strong>mesmo acorde de Lá maior</strong> tocado de 5 jeitos diferentes, cada um nascendo de um acorde aberto conhecido: A, G, E, D e C. Antes de tocar, abra <strong>Braço → Acordes</strong>, escolha raiz <strong>A</strong> e veja o diagrama de cada forma, uma de cada vez.',
+      'Ordem subindo o braço: <strong>A</strong> (aberta, casas 0–2) → <strong>G</strong> (casas 2–5) → <strong>E</strong> (barra na 5ª casa) → <strong>D</strong> (7ª casa) → <strong>C</strong> (bem alto, 9ª–12ª casas).',
+      'Toque cada forma por um <strong>compasso inteiro</strong> (4 tempos, uma palhetada por tempo) antes de deslizar para a próxima. Não solte a mão antes da hora: a troca acontece exatamente na virada do compasso.',
+      'Repare nas notas que <strong>se repetem</strong> entre uma forma e a próxima (mesma corda, casa parecida) — é o ponto de conexão entre as duas, o motivo do sistema se chamar CAGED.',
+      'Quando estiver limpo, repita descendo (C → D → E → G → A) e depois experimente outra raiz no explorador, para ver o mesmo padrão se repetir em qualquer nota.',
+    ],
+    tips: [
+      'Se travar numa forma, pare só nela: toque A sozinha várias vezes até a mão decorar, depois só G, e assim por diante, antes de juntar a sequência inteira.',
+      'A forma C fica bem no agudo do braço para o Lá — é normal parecer "esquisita" no começo; é a mesma lógica das outras quatro, só que numa oitava mais alta.',
     ],
   },
 
