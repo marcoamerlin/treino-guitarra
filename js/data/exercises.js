@@ -78,6 +78,21 @@ const pentSeqDsl = pentSeqOcc.map((idx, pos) => {
 }).join(' ') + ' D7'; // fecha sozinha na Ré, casa 7
 const pentSeqTab = dslTab('Janela de 3 cordas, deslizando 1 por vez — acento no pull-off', pentSeqDsl, { perBeat: 2 });
 
+// Lick nas cordas Sol e Ré: célula de 8 notas (G D+3 G D+3 D+1 D D+1 D+3, "base" = casa da corda
+// Sol), repetida 4 vezes (o "(2x)" do vídeo marca a célula de 16 — duas dessas 8 —, e o próprio
+// vídeo toca esse bloco de 16 duas vezes), fechando sozinha na Sol, casa "base". Sem hammer/pull:
+// só palhetada alternada. Mesmo desenho, só deslizando a mão — 3 posições (casas 1, 5 e 9),
+// pedido do usuário depois de conferir a casa 9 (vídeo de referência; ver CLAUDE.md). 33 notas
+// por posição (8×4 + 1).
+const gdLickDsl = (base) => {
+  const cell = `G${base} D${base + 3} G${base} D${base + 3} D${base + 1} D${base} D${base + 1} D${base + 3}`;
+  return `${Array(4).fill(cell).join(' ')} G${base}`;
+};
+const gdLickTabs = [1, 5, 9].map((base) => dslTab(
+  `Casa ${base}: célula de 8 notas, repetida 4 vezes, fechando na Sol`,
+  gdLickDsl(base), { perBeat: 2, pick: 'alt' },
+));
+
 // Riff em Lá: colcheias de 4 tempos, palm mute. Dois compassos que se repetem.
 const COUNT = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
 const riffChords = ['A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'D5', 'D5', 'A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'E5', 'E5'];
@@ -367,6 +382,25 @@ export const EXERCISES = {
     tips: [
       'A virada Sol→Si (que não cai de casa) é onde mais gente erra de cabeça. Pratique essa transição isolada antes da sequência inteira.',
       'É praticamente o mesmo desenho da mão inteira, só deslizando 1 casa a cada corda — pense nisso como um só movimento contínuo, não 6 posições separadas.',
+    ],
+  },
+
+  gd_lick: {
+    title: 'Lick nas cordas Sol e Ré',
+    subtitle: 'Só palhetada, sem hammer nem pull-off — em 3 posições',
+    cat: 'tecnica',
+    min: 10,
+    bpm: { start: 55, goal: 95 },
+    tabs: gdLickTabs,
+    steps: [
+      'Só duas cordas: <strong>Sol</strong> (uma casa fixa) e <strong>Ré</strong> (essa casa +3, +1, ela mesma, +1, +3). A célula é: Sol, Ré, Sol, e o desenho completo na Ré — 8 notas ao todo.',
+      'Ao contrário dos outros exercícios de técnica, aqui é <strong>tudo palhetado</strong>, alternando para baixo e para cima — sem hammer-on nem pull-off.',
+      'Repita a célula de 8 notas <strong>4 vezes seguidas</strong>, sem parar entre uma e outra, e termine com uma nota solta na Sol, fechando a frase.',
+      'É o <strong>mesmo desenho</strong> nas 3 abas — só a mão desliza para outra casa. Pratique cada posição separada antes de tentar trocar de uma para outra.',
+    ],
+    tips: [
+      'O salto Sol→Ré→Sol é pequeno (cordas vizinhas), mas repetido rápido cansa o pulso. Mantenha o movimento da mão pequeno e relaxado.',
+      'Grave-se tocando: numa frase repetitiva como essa, é fácil acelerar sem perceber. Confira se as 4 repetições saem no mesmo tempo.',
     ],
   },
 

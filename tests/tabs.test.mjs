@@ -202,3 +202,14 @@ test('leg_seq6 (pentatônica em janelas de 3 cordas): bate nota a nota com o que
   const softPositions = soft.map((s, i) => (s ? i : -1)).filter((i) => i >= 0);
   assert.deepEqual(softPositions, [1, 7, 13, 19]);
 });
+
+test('gd_lick (Sol/Ré): célula de 8 notas repetida 4 vezes, fechando na Sol — 3 posições (1, 5, 9)', () => {
+  const STR = ['e', 'B', 'G', 'D', 'A', 'E'];
+  assert.equal(EXERCISES.gd_lick.tabs.length, 3);
+  [1, 5, 9].forEach((base, i) => {
+    const cell = ['G' + base, 'D' + (base + 3), 'G' + base, 'D' + (base + 3), 'D' + (base + 1), 'D' + base, 'D' + (base + 1), 'D' + (base + 3)];
+    const expected = [...cell, ...cell, ...cell, ...cell, 'G' + base];
+    const got = EXERCISES.gd_lick.tabs[i].play.cols.map(([[string, fret]]) => STR[string] + fret);
+    assert.deepEqual(got, expected, `posição casa ${base}`);
+  });
+});

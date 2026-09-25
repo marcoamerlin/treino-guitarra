@@ -82,6 +82,14 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   vista — é intercalada, uma corda de cada janela por vez). Achado por conferência: o pull-off
   cai sempre na 1ª nota de cada grupo de 6, que é exatamente o acento que o usuário descreveu do
   vídeo — validado por teste (regra `pos % 3 === 0`), não é coincidência de dado solto.
+- `gd_lick` em exercises.js: lick só nas cordas Sol e Ré (célula de 8 notas: Sol, Ré+3, Sol, Ré+3,
+  Ré+1, Ré, Ré+1, Ré+3 — "+N" relativo à casa da corda Sol —, repetida 4 vezes, fechando sozinho
+  na Sol). Só palhetada alternada, sem hammer/pull. Conferido com o usuário (vídeo de referência;
+  ver CLAUDE.md); usa a nota Si (2º grau), que não existe na pentatônica dos exercícios
+  anteriores — por isso provavelmente é A eólio (menor natural completo), não pentatônica, dado o
+  contexto da semana em Lá menor. `gdLickDsl(base)` gera o desenho pra qualquer casa; o exercício
+  traz 3 posições (casas 1, 5 e 9) como abas — mesmo desenho, só desliza a mão, a pedido do
+  usuário depois de conferir a casa 9.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
