@@ -8,6 +8,8 @@ import { buildTab } from '../tab.js';
 import { chordCol } from './chords.js';
 import { parseTab } from '../tab-dsl.js';
 import { voicingArray } from '../chord-shapes.js';
+import { fretboardNotes } from '../theory.js';
+import { midiOf } from '../tab-player.js';
 
 export const CATEGORIES = {
   aquecimento: 'Aquecimento',
@@ -92,6 +94,23 @@ const cagedTab = makeTab(
   { bar: 4, count: ['1', '2', '3', '4'], pick: alternate(cagedCols.length) },
   { perBeat: 1, voice: 'clean' },
 );
+
+// Sequência diatônica em grupos de 4 (Dó maior, 7ª posição, casas 7–10 — a única posição do
+// vídeo-fonte conferida nota a nota com o usuário, casa por casa e corda por corda; ver
+// CLAUDE.md). Gerada por cálculo a partir de fretboardNotes, nunca digitada à mão: pega as
+// notas da posição em ordem de altura (grave → agudo) e desliza uma janela de 4 notas, uma
+// nota por vez, terminando sozinha na tônica do topo.
+const seq4Base = fretboardNotes(0, 'major', 7, 10) // Dó maior, casas 7–10
+  .map((n) => ({ ...n, midi: midiOf(n.string, n.fret) }))
+  .sort((a, b) => a.midi - b.midi)
+  .slice(1); // tira o Si da casa 7 da Mi grave (abaixo da tônica); a sequência começa no Dó
+const seq4Cols = [];
+for (let i = 0; i <= seq4Base.length - 5; i++) {
+  seq4Base.slice(i, i + 4).forEach((n) => seq4Cols.push([[n.string, n.fret]]));
+}
+seq4Cols.push([[seq4Base[seq4Base.length - 1].string, seq4Base[seq4Base.length - 1].fret]]);
+const seq4Tab = makeTab('Grupos de 4, subindo (Dó maior, 7ª posição)', seq4Cols,
+  { pick: alternate(seq4Cols.length) }, { perBeat: 2, voice: 'clean' });
 
 // ---- Exercícios ------------------------------------------------------------
 
@@ -259,6 +278,28 @@ export const EXERCISES = {
     tips: [
       'Se travar numa forma, pare só nela: toque A sozinha várias vezes até a mão decorar, depois só G, e assim por diante, antes de juntar a sequência inteira.',
       'A forma C fica bem no agudo do braço para o Lá — é normal parecer "esquisita" no começo; é a mesma lógica das outras quatro, só que numa oitava mais alta.',
+    ],
+  },
+
+  // ---- Técnica: sequência diatônica -------------------------------------------------------------
+
+  seq4: {
+    title: 'Sequência em grupos de 4',
+    subtitle: 'Escala de Dó maior, 7ª posição — sobe uma nota de cada vez',
+    cat: 'tecnica',
+    min: 8,
+    bpm: { start: 55, goal: 95 },
+    tabs: [seq4Tab],
+    steps: [
+      'A ideia: toque <strong>4 notas seguidas</strong> da escala, depois repita o mesmo grupo de 4 começando <strong>uma nota acima</strong> da anterior — 1-2-3-4, depois 2-3-4-5, depois 3-4-5-6, e assim por diante, sempre subindo.',
+      'Começa na corda <strong>Mi grave, casa 8</strong> (o Dó, tônica). A casa 7 dessa corda existe na posição mas não entra aqui — a sequência só começa na tônica.',
+      'Em cada corda o desenho é sempre <strong>3 notas</strong>, com os dedos 1-2-4 (casas 7-8-10) ou 1-3-4 (casas 7-9-10) — confira no diagrama de cada corda antes de tocar.',
+      'Palhetada alternada (para baixo, para cima) do início ao fim, sem pular nenhuma nota.',
+      'Por enquanto é só essa posição (casas 7 a 10). Quando estiver limpo, dá pra repetir mais alto ou mais baixo no braço, movendo a mesma forma.',
+    ],
+    tips: [
+      'A troca de corda é onde mais atrasa. Pratique bem devagar só as transições (ex.: só o final de uma corda + começo da próxima) antes de tentar a sequência inteira rápida.',
+      'Se perder a conta de qual grupo está tocando, pare e volte para a tônica (Mi grave, casa 8) — é o ponto de referência mais fácil de achar de novo.',
     ],
   },
 

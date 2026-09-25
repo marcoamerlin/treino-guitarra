@@ -59,6 +59,15 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   testes de fretboardIntervals checam esse nome). Nomes duplos ("4#/5b", "5#/6-") não cabem numa
   linha só dentro do círculo e ficavam cortados (ex.: "#/5b" virava ilegível); `fretboardSVG` agora
   detecta o "/" e desenha em duas linhas menores, com o círculo um pouco maior nesses casos.
+- `seq4` em exercises.js (categoria Técnica): sequência diatônica em grupos de 4 (1-2-3-4, 2-3-4-5...),
+  Dó maior, 7ª posição (casas 7–10) — exercício 1 de um vídeo de referência do usuário (Cordas e
+  Música/Carlos Lisboa, "10 exercícios fundamentais de guitarra"). A tablatura do vídeo (frames de
+  YouTube) era ilegível demais pra transcrever com segurança (compressão embaralha 7/9 e 8/10); o
+  usuário ditou a sequência nota a nota assistindo, e ela foi conferida por cálculo antes de entrar
+  no banco — gerada a partir de `fretboardNotes(0, 'major', 7, 10)` ordenada por altura (`midiOf`),
+  tirando o Si abaixo da tônica e deslizando uma janela de 4 notas. Bate 100% com o ditado do
+  usuário (teste em tabs.test.mjs). Só essa posição por enquanto — as outras 3 que o vídeo só cita
+  de boca (não mostra a tablatura) ficam pendentes.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as

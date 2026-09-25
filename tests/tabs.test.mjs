@@ -166,3 +166,15 @@ test('exercício de intervalos (Mi grave/Lá): a sequência toca exatamente os i
   });
   assert.deepEqual(got, expected);
 });
+
+test('seq4 (grupos de 4, Dó maior 7ª posição): bate nota a nota com a sequência conferida com o usuário', () => {
+  const STR = ['e', 'B', 'G', 'D', 'A', 'E'];
+  // Ditada pelo usuário assistindo ao vídeo-fonte (Cordas e Música, exercício 1), casa por casa e
+  // corda por corda; conferida por cálculo a partir da escala antes de entrar aqui — ver CLAUDE.md.
+  const expected = (
+    'E8 E10 A7 A8 E10 A7 A8 A10 A7 A8 A10 D7 A8 A10 D7 D9 A10 D7 D9 D10 D7 D9 D10 G7 D9 D10 '
+    + 'G7 G9 D10 G7 G9 G10 G7 G9 G10 B8 G9 G10 B8 B10 G10 B8 B10 e7 B8 B10 e7 e8 e10'
+  ).split(' ');
+  const got = EXERCISES.seq4.tabs[0].play.cols.map(([[string, fret]]) => STR[string] + fret);
+  assert.deepEqual(got, expected);
+});
