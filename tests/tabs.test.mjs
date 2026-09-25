@@ -188,3 +188,17 @@ test('cascade4 (cromático em cascata): sobe Mi grave→Mi aguda, desce 1 casa a
   const got = EXERCISES.cascade4.tabs[0].play.cols.map(([[string, fret]]) => STR[string] + fret);
   assert.deepEqual(got, expected);
 });
+
+test('leg_seq6 (pentatônica em janelas de 3 cordas): bate nota a nota com o que o usuário conferiu', () => {
+  const STR = ['e', 'B', 'G', 'D', 'A', 'E'];
+  const expected = (
+    'e8 e5 B8 B5 G7 G5 B8 B5 G7 G5 D7 D5 G7 G5 D7 D5 A7 A5 D7 D5 A7 A5 E8 E5 D7'
+  ).split(' ');
+  const got = EXERCISES.leg_seq6.tabs[0].play.cols.map(([[string, fret]]) => STR[string] + fret);
+  assert.deepEqual(got, expected);
+  // acento = pull-off = 1ª nota de cada grupo de 6 (soft marca quem CHEGA por hammer/pull, não
+  // quem sai): índices 1, 7, 13, 19 devem ser "soft" (chegam por pull-off da nota anterior).
+  const soft = EXERCISES.leg_seq6.tabs[0].play.soft;
+  const softPositions = soft.map((s, i) => (s ? i : -1)).filter((i) => i >= 0);
+  assert.deepEqual(softPositions, [1, 7, 13, 19]);
+});

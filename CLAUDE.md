@@ -74,6 +74,14 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   casa inicial. Conferido corda por corda com o usuário; a repetição Sol=Si na volta (descida) foi
   extrapolada por simetria da subida (que o usuário confirmou), não checada nota a nota como o
   resto — sinalizado no código, a confirmar quando o usuário ouvir.
+- `leg_seq6` em exercises.js: exercício 2 de um segundo vídeo de referência (pentatônica de Lá
+  menor, caixa 1). Desce em pares (nota alta puxando pra baixa) numa janela de 3 cordas que
+  desliza 1 por vez (e-B-G, B-G-D, G-D-A, D-A-E — 4 janelas de 6 notas), gerado a partir do
+  próprio `box1` já usado noutros exercícios (não duplica os números). Conferido corda por corda
+  com o usuário, inclusive a ordem exata (que não é "agrupada por corda" como pareceu à primeira
+  vista — é intercalada, uma corda de cada janela por vez). Achado por conferência: o pull-off
+  cai sempre na 1ª nota de cada grupo de 6, que é exatamente o acento que o usuário descreveu do
+  vídeo — validado por teste (regra `pos % 3 === 0`), não é coincidência de dado solto.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as

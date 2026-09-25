@@ -62,6 +62,22 @@ const groups3 = [0, 1, 2, 3].flatMap((i) => box1.slice(i, i + 3).map((n) => [n])
 const groups3Tab = makeTab('Quatro primeiros grupos (continue até o topo da caixa)', groups3,
   { pick: alternate(groups3.length) }, { perBeat: 2, voice: 'clean' });
 
+// Pentatônica caixa 1 (mesmas casas de box1), pares descendo nota alta → baixa com pull-off,
+// numa janela de 3 cordas que desliza 1 por vez: e-B-G, B-G-D, G-D-A, D-A-E — 4 janelas de 6
+// notas. Conferido corda por corda com o usuário (vídeo de referência, exercício 2; ver
+// CLAUDE.md): o pull-off cai exatamente na 1ª nota de cada janela — é o acento a cada 6 notas
+// que o professor pede. Fecha com uma nota solta na Ré, casa 7.
+const descPairs = [10, 8, 6, 4, 2, 0].map((i) => ({ string: box1[i][0], hi: box1[i + 1][1], lo: box1[i][1] }));
+const STR6 = ['e', 'B', 'G', 'D', 'A', 'E'];
+const pentSeqOcc = [0, 1, 2, 3].flatMap((start) => [0, 1, 2].map((k) => start + k));
+const pentSeqDsl = pentSeqOcc.map((idx, pos) => {
+  const p = descPairs[idx];
+  const accent = pos % 3 === 0; // 1ª nota de cada janela de 3 cordas
+  const name = STR6[p.string];
+  return `${name}${p.hi}${accent ? 'p' : ''} ${name}${p.lo}`;
+}).join(' ') + ' D7'; // fecha sozinha na Ré, casa 7
+const pentSeqTab = dslTab('Janela de 3 cordas, deslizando 1 por vez — acento no pull-off', pentSeqDsl, { perBeat: 2 });
+
 // Riff em Lá: colcheias de 4 tempos, palm mute. Dois compassos que se repetem.
 const COUNT = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
 const riffChords = ['A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'D5', 'D5', 'A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'E5', 'E5'];
@@ -396,6 +412,24 @@ export const EXERCISES = {
       'A cada troca de corda, palhete de novo. O que muda a palhetada é só a mudança de corda.',
     ],
     tips: ['Abafe a corda que você acabou de tocar com a ponta do dedo para as notas não ficarem soando juntas.'],
+  },
+  leg_seq6: {
+    title: 'Sequência com acento a cada 6',
+    subtitle: 'Pentatônica caixa 1, descendo em janelas de 3 cordas',
+    cat: 'tecnica',
+    min: 8,
+    bpm: { start: 55, goal: 95 },
+    tabs: [pentSeqTab],
+    steps: [
+      'Mesma caixa 1 da pentatônica de Lá menor, mas em vez de descer reto (como no exercício anterior), a descida usa uma <strong>janela de 3 cordas</strong> que desliza 1 corda por vez: Mi fina-Si-Sol, depois Si-Sol-Ré, depois Sol-Ré-Lá, depois Ré-Lá-Mi grave.',
+      'Cada corda toca sempre o mesmo par: nota de cima <strong>puxando (p)</strong> para a de baixo. Como cada janela repete 2 das 3 cordas da anterior, várias cordas se repetem 2 ou 3 vezes seguidas antes de avançar.',
+      'O <strong>acento</strong> cai sempre na 1ª nota de cada grupo de 6 (a primeira corda de cada janela nova) — nesta tablatura é justamente aí que a nota vem com pull-off, então acentue naturalmente ao puxar o dedo com mais força.',
+      'Termina com uma nota solta na corda Ré, casa 7, fechando a frase.',
+    ],
+    tips: [
+      'Se enrolar contando as janelas, pense em blocos de 6: toque 1 grupo de cada vez e pare, antes de emendar todos.',
+      'O acento não é só mais forte — é a nota que "puxa" a atenção do ouvinte pro início de cada grupo. Exagere um pouco enquanto treina devagar.',
+    ],
   },
   leg_trill: {
     title: 'Trinado 5–8 (força dos dedos)',
