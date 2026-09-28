@@ -70,7 +70,10 @@ alter table public.teacher_links enable row level security;
 revoke all on public.teacher_codes from anon;
 revoke all on public.teacher_links from anon;
 grant select, insert, update on public.teacher_codes to authenticated;
-grant select, insert, delete on public.teacher_links to authenticated;
+-- update também é preciso aqui: o "Vincular" faz um upsert, que por baixo é um insert com
+-- "on conflict do update" (vincular de novo troca de professor) — sem o grant, dava
+-- "permission denied for table teacher_links" mesmo com a policy certa (achado testando, 2026-09-28).
+grant select, insert, update, delete on public.teacher_links to authenticated;
 
 drop policy if exists "teacher_codes_select_any" on public.teacher_codes;
 drop policy if exists "teacher_codes_upsert_own" on public.teacher_codes;
@@ -91,6 +94,7 @@ create policy "teacher_codes_update_own" on public.teacher_codes
 
 drop policy if exists "teacher_links_select_related" on public.teacher_links;
 drop policy if exists "teacher_links_insert_self" on public.teacher_links;
+drop policy if exists "teacher_links_update_self" on public.teacher_links;
 drop policy if exists "teacher_links_delete_related" on public.teacher_links;
 
 -- Professor e aluno enxergam o próprio vínculo (o professor vê todos os alunos dele).
@@ -101,6 +105,13 @@ create policy "teacher_links_select_related" on public.teacher_links
 -- Só o próprio aluno cria o vínculo (linka a si mesmo a um professor).
 create policy "teacher_links_insert_self" on public.teacher_links
   for insert to authenticated with check ((select auth.uid()) = student_id);
+
+-- Idem para atualizar (o "Vincular" é um upsert: se o aluno já tinha vínculo, isto troca de
+-- professor em vez de inserir de novo).
+create policy "teacher_links_update_self" on public.teacher_links
+  for update to authenticated
+  using ((select auth.uid()) = student_id)
+  with check ((select auth.uid()) = student_id);
 
 -- Qualquer um dos dois lados pode desfazer o vínculo.
 create policy "teacher_links_delete_related" on public.teacher_links
