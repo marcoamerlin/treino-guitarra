@@ -322,6 +322,14 @@ header.faceplate::before {
 .bpm-lcd .num { font-family: var(--font-mono); font-size: 28px; font-weight: 600; color: var(--lcd-text); line-height: 1; }
 .bpm-lcd .unit { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-top: 3px; letter-spacing: 0.5px; }
 
+.code-lcd {
+  background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 14px; display: inline-block; margin: 6px 0 10px;
+}
+.code-lcd .num { font-family: var(--font-mono); font-size: 22px; font-weight: 600; color: var(--lcd-text); letter-spacing: 3px; }
+.teacher-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
+.teacher-toggle { background: none; border: none; color: var(--brass); font-family: var(--font-mono); font-size: 13px; padding: 0; cursor: pointer; }
+
 .run-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .run-btn {
   min-height: 46px;

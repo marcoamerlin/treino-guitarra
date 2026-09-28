@@ -35,6 +35,17 @@ No celular, abrir o endereço no Chrome (Android) ou Safari (iPhone) e usar
 Observação: projetos gratuitos do Supabase são pausados após 7 dias sem uso. Usando o app
 diariamente isso não acontece; se pausar, basta reativar no painel.
 
+## 3. Atualizar o schema (professor/aluno)
+
+Sempre que `supabase/schema.sql` mudar (por exemplo, a função de professor acompanhar aluno):
+**SQL Editor** → colar todo o conteúdo do arquivo de novo → Run. É seguro rodar de novo mesmo já
+tendo dados: as tabelas e políticas existentes não são apagadas, só criadas as que faltam.
+
+Depois de rodar, qualquer usuário pode: em **Conta e sincronização**, abrir "▸ Sou professor de
+alguém" para gerar um código e ver a lista de alunos vinculados; ou, para ser aluno de alguém,
+digitar o código dele no campo "Vincular a um professor". Continua sendo preciso criar a conta de
+cada pessoa manualmente (passo 3 acima) — o código só cria o vínculo, não a conta.
+
 ## Testar localmente
 
 - `npm start` (ou `node tools/serve.mjs`) → http://localhost:5173 no notebook.

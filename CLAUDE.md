@@ -30,6 +30,23 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/merge.js`: combina dados de dois aparelhos (funções puras). `js/sync-core.js`: motor de sync com
   o Supabase (tabela `user_data`, 1 linha por usuário, controle otimista por `rev`); `js/sync.js` liga
   o motor ao navegador; `js/config.js` guarda URL e chave pública. Esquema do banco: `supabase/schema.sql`.
+  `sync-core.js` expõe `getClient()`/`getUserId()`/`getEmail()` para outros módulos reaproveitarem a
+  mesma conexão autenticada (usado por teacher-core.js), em vez de abrir outro client Supabase.
+- `js/teacher-core.js` + `js/teacher.js`: professor acompanha e edita o plano de alunos vinculados
+  a ele (pedido de usuário, 2026-09-28). Vínculo nasce do **aluno**: o professor gera um código
+  (tabela `teacher_codes`) e o aluno digita esse código pra se linkar (tabela `teacher_links`,
+  `student_id` é a chave — um aluno tem no máximo 1 professor por vez; vincular de novo troca).
+  RLS de `user_data` foi estendida (ver `supabase/schema.sql`) pra um professor ler/gravar a linha
+  de alunos vinculados — a policy libera a LINHA inteira por simplicidade (confiança do tamanho do
+  grupo: poucos professores conhecidos), mas o app só escreve em `plans`, nunca em `logs`/`speeds`.
+  `writeStudentPlan()` usa controle otimista igual ao `sync-core.js` (lê rev, grava só se não
+  mudou, refaz em caso de conflito) — sem isso, o professor editando ao mesmo tempo que o aluno
+  sincroniza podia perder escrita de um dos dois. Continua precisando criar a conta de cada pessoa
+  à mão no painel (cadastro público desligado); o código só cria o vínculo, não a conta. Teste:
+  `tests/teacher.test.mjs`, com um Supabase de mentira no mesmo espírito de `tests/sync.test.mjs`.
+  UI: dentro da folha "Conta e sincronização" (`teacherSectionView()`/`studentPlanView()` em
+  app.js) — o editor de plano do aluno é uma versão simplificada do "Editar dia" pessoal (sem
+  timer/áudio/comando de voz, só a lista de exercícios), porque o professor só planeja, não toca.
 - `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
   usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem
   do Google) e pode disputar com o som do amplificador. parseCommand() é pura/testável; o resto só
@@ -139,3 +156,7 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - Publicar no GitHub Pages (repositório `marcoamerlin/treino-guitarra`, ver `docs/setup.md`).
 - Conteúdo de terça a domingo escrito por mim (sem professor): validar tablaturas e licks tocando, e ajustar o que soar estranho.
 - Ideias: gráfico de progresso, lembrete diário, exercícios criados pelo usuário.
+- Professor/aluno (2026-09-28): código pronto (schema, RLS, UI), mas o schema novo (`teacher_codes`,
+  `teacher_links`, RLS estendida de `user_data`) ainda não foi rodado no Supabase de produção —
+  precisa colar `supabase/schema.sql` de novo no SQL Editor (é aditivo/idempotente, não mexe nos
+  dados existentes) antes de testar de verdade com uma conta professor + uma aluno.

@@ -137,5 +137,10 @@ export function createSync({ store, config, loadSdk }) {
     schedule,
     getState: () => state,
     onState(fn) { listeners.add(fn); },
+    // Para o módulo de professor/aluno (teacher-core.js): reaproveita a mesma conexão já
+    // autenticada, em vez de abrir outro client Supabase. null enquanto não há sessão.
+    getClient: () => (session ? client : null),
+    getUserId: () => (session ? session.user.id : null),
+    getEmail: () => (session ? session.user.email : null),
   };
 }

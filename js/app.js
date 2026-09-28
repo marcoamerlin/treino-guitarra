@@ -12,6 +12,7 @@ import { fretboardSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
+import { teacher } from './teacher.js';
 
 // ---- Utilidades -----------------------------------------------------------
 
@@ -404,14 +405,18 @@ function loginMessage(error) {
 }
 
 function accountView() {
-  const root = el('div');
+  const wrap = el('div');
+  const syncPart = el('div');
+  wrap.appendChild(syncPart);
   let lastKey = '';
+  let teacherMounted = false;
 
   const draw = () => {
     const s = sync.getState();
     const key = [s.status, s.email, s.error, s.lastSync].join('|');
     if (key === lastKey) return;
     lastKey = key;
+    const root = syncPart;
 
     if (s.status === 'disabled') {
       root.innerHTML =
@@ -471,10 +476,281 @@ function accountView() {
         }
       });
     }
+
+    // Monta a área de professor/aluno uma única vez, assim que há sessão — não depende do
+    // status de sincronização (syncing/ok/erro), então não refaz a cada redesenho.
+    if (s.email && !teacherMounted) {
+      teacherMounted = true;
+      wrap.appendChild(teacherSectionView());
+    }
   };
 
   sheetRedrawers.push(draw);
   draw();
+  return wrap;
+}
+
+// ---- Professor e aluno --------------------------------------------------------------
+
+// Vínculo com professor (lado aluno) + área do professor (código + alunos), dentro da folha de
+// conta. Carrega uma vez ao abrir (não fica repetindo a cada redesenho do resto da folha).
+function teacherSectionView() {
+  const root = el('div', 'teacher-section');
+  root.innerHTML = '<p class="sub">Carregando professor/alunos…</p>';
+  let students = [];
+  let myTeacherRow = null;
+  let codeRevealed = null; // null = ainda não pedido; string = já veio
+
+  function linkBlock() {
+    const box = el('div');
+    if (myTeacherRow) {
+      box.innerHTML =
+        `<p class="sub">Vinculado ao professor <strong>${myTeacherRow.teacher_email}</strong></p>` +
+        '<div class="day-actions"><button class="action" data-unlink>Desvincular</button></div>';
+      box.querySelector('[data-unlink]').addEventListener('click', async () => {
+        if (!window.confirm(`Desvincular do professor ${myTeacherRow.teacher_email}?`)) return;
+        await teacher.unlink(sync.getUserId());
+        myTeacherRow = null;
+        redraw();
+      });
+    } else {
+      box.innerHTML =
+        '<p class="sub">Tem um professor acompanhando seu treino? Digite o código dele:</p>' +
+        '<form class="account-form link-form">' +
+          '<label>Código do professor<input type="text" name="code" maxlength="6" autocapitalize="characters" required></label>' +
+          '<button class="action primary" type="submit">Vincular</button>' +
+          '<p class="form-error" role="alert"></p>' +
+        '</form>';
+      const form = box.querySelector('form');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submit = form.querySelector('button');
+        const message = form.querySelector('.form-error');
+        submit.disabled = true;
+        message.textContent = '';
+        try {
+          const { teacherEmail } = await teacher.linkToTeacher(form.code.value);
+          myTeacherRow = { teacher_email: teacherEmail };
+          toast(`Vinculado a ${teacherEmail}.`);
+          redraw();
+        } catch (error) {
+          message.textContent = error.message || String(error);
+          submit.disabled = false;
+        }
+      });
+    }
+    return box;
+  }
+
+  function studentRow(student) {
+    const row = el('div', 'bank-item');
+    row.innerHTML =
+      `<div class="bi-title">${student.student_email}</div>` +
+      '<div class="bi-sub">Toque em Planejar para montar a semana dele.</div>' +
+      '<div class="day-actions" style="margin-top:8px"><button class="action" data-plan>Planejar</button>' +
+      '<button class="action" data-unlink>Desvincular</button></div>';
+    row.querySelector('[data-plan]').addEventListener('click', () => openSheet(studentPlanView(student)));
+    row.querySelector('[data-unlink]').addEventListener('click', async () => {
+      if (!window.confirm(`Desvincular o aluno ${student.student_email}?`)) return;
+      await teacher.unlink(student.student_id);
+      students = students.filter((s) => s.student_id !== student.student_id);
+      redraw();
+    });
+    return row;
+  }
+
+  function teacherBlock() {
+    const box = el('div');
+    if (codeRevealed === null) {
+      box.innerHTML = '<button class="teacher-toggle">▸ Sou professor de alguém</button>';
+      box.querySelector('button').addEventListener('click', async () => {
+        box.innerHTML = '<p class="sub">Gerando código…</p>';
+        try {
+          codeRevealed = await teacher.myCode();
+        } catch (error) {
+          box.innerHTML = `<p class="tip">${error.message || error}</p>`;
+          return;
+        }
+        redraw();
+      });
+      return box;
+    }
+    box.innerHTML =
+      '<p class="sub">Passe este código para o aluno digitar (em Conta → Vincular a um professor):</p>' +
+      `<div class="code-lcd"><span class="num">${codeRevealed}</span></div>` +
+      '<div class="sub">Meus alunos</div>';
+    const list = el('div', 'bank-list');
+    if (!students.length) list.appendChild(el('p', 'empty', 'Nenhum aluno vinculado ainda.'));
+    students.forEach((s) => list.appendChild(studentRow(s)));
+    box.appendChild(list);
+    return box;
+  }
+
+  function redraw() {
+    root.innerHTML = '';
+    root.appendChild(el('h2', null, 'Professor e alunos'));
+    root.appendChild(linkBlock());
+    root.appendChild(teacherBlock());
+  }
+
+  Promise.all([teacher.myTeacher(), teacher.listStudents()])
+    .then(([mine, list]) => { myTeacherRow = mine; students = list; redraw(); })
+    .catch((error) => { root.innerHTML = `<p class="tip">Não consegui carregar: ${error.message || error}</p>`; });
+
+  return root;
+}
+
+// Tela do professor pra planejar a semana de um aluno específico: progresso resumido (BPM e
+// dias concluídos) + edição do plano de um dia, salvando direto no banco do aluno.
+function studentPlanView(student) {
+  const root = el('div');
+  root.innerHTML = `<h2>${student.student_email}</h2><div class="sub">Carregando dados do aluno…</div>`;
+
+  let studentData = null;
+  let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
+  let items = [];
+
+  function progressBlock() {
+    const box = el('div');
+    const speeds = (studentData && studentData.speeds) || {};
+    const ids = Object.keys(speeds);
+    box.innerHTML = '<div class="sub">Progresso (velocidade por exercício)</div>';
+    if (!ids.length) {
+      box.appendChild(el('p', 'tip', 'O aluno ainda não registrou nenhuma velocidade.'));
+      return box;
+    }
+    const list = el('div', 'chip-row');
+    ids.forEach((id) => {
+      const ex = EXERCISES[id];
+      const label = `${ex ? ex.title : id} · ${speeds[id].bpm} BPM`;
+      list.appendChild(el('span', 'chip', label));
+    });
+    box.appendChild(list);
+    return box;
+  }
+
+  function dayTabs() {
+    const row = el('div', 'chip-row');
+    WEEK.forEach((day) => {
+      const chip = el('button', `chip${day.key === dayKey ? ' on' : ''}`, day.label);
+      chip.addEventListener('click', () => { dayKey = day.key; loadDay(); });
+      row.appendChild(chip);
+    });
+    return row;
+  }
+
+  function loadDay() {
+    const day = WEEK.find((d) => d.key === dayKey);
+    const custom = studentData.plans && studentData.plans[dayKey];
+    items = (custom && Array.isArray(custom.items) ? custom.items : day.plan).map((item) => ({ ...item }));
+    drawPlan();
+  }
+
+  function planList() {
+    const list = el('div');
+    if (!items.length) list.appendChild(el('p', 'empty', 'Dia vazio.'));
+    items.forEach((item, i) => {
+      const ex = EXERCISES[item.ex];
+      const row = el('div', 'bank-item');
+      row.innerHTML =
+        `<div class="bi-title">${ex ? ex.title : item.ex}</div>` +
+        `<div class="bi-meta">${ex ? CATEGORIES[ex.cat] : ''} · ${item.min} min</div>` +
+        '<div class="day-actions" style="margin-top:8px">' +
+          '<button class="action" data-up>↑</button><button class="action" data-down>↓</button>' +
+          '<button class="action" data-remove>Remover</button>' +
+        '</div>';
+      row.querySelector('[data-up]').addEventListener('click', () => {
+        if (i === 0) return;
+        [items[i - 1], items[i]] = [items[i], items[i - 1]];
+        drawPlan();
+      });
+      row.querySelector('[data-down]').addEventListener('click', () => {
+        if (i === items.length - 1) return;
+        [items[i + 1], items[i]] = [items[i], items[i + 1]];
+        drawPlan();
+      });
+      row.querySelector('[data-remove]').addEventListener('click', () => {
+        items.splice(i, 1);
+        drawPlan();
+      });
+      list.appendChild(row);
+    });
+    return list;
+  }
+
+  function pickExerciseView(onPick) {
+    const picker = el('div');
+    let filter = 'todos';
+    picker.innerHTML =
+      '<h2>Adicionar exercício</h2><div class="sub">Banco de exercícios. Toque em um para escolher.</div>' +
+      '<div class="chip-row cat-row"></div><div class="bank-list"></div>';
+    const catRow = picker.querySelector('.cat-row');
+    const list = picker.querySelector('.bank-list');
+    const drawList = () => {
+      catRow.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.cat === filter));
+      list.innerHTML = '';
+      Object.entries(EXERCISES)
+        .filter(([, ex]) => filter === 'todos' || ex.cat === filter)
+        .forEach(([id, ex]) => {
+          const item = el('button', 'bank-item');
+          item.innerHTML =
+            `<div class="bi-title">${ex.title}</div>` +
+            `<div class="bi-meta">${CATEGORIES[ex.cat]} · ${ex.min} min${ex.bpm ? ' · metrônomo' : ''}</div>` +
+            `<div class="bi-sub">${ex.subtitle || ''}</div>`;
+          item.addEventListener('click', () => { closeSheet(); onPick(id, ex); });
+          list.appendChild(item);
+        });
+    };
+    [['todos', 'Todos'], ...Object.entries(CATEGORIES)].forEach(([key, label]) => {
+      const chip = el('button', 'chip', label);
+      chip.dataset.cat = key;
+      chip.addEventListener('click', () => { filter = key; drawList(); });
+      catRow.appendChild(chip);
+    });
+    drawList();
+    return picker;
+  }
+
+  function drawPlan() {
+    const body = root.querySelector('.student-plan-body');
+    body.innerHTML = '';
+    body.appendChild(dayTabs());
+    body.appendChild(planList());
+    const actions = el('div', 'day-actions');
+    const add = el('button', 'action', '+ Adicionar exercício');
+    add.addEventListener('click', () => {
+      openSheet(pickExerciseView((id, ex) => { items.push({ ex: id, min: ex.min }); drawPlan(); openSheet(root); }));
+    });
+    const save = el('button', 'action primary', '✓ Salvar plano deste dia');
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      try {
+        await teacher.writeStudentPlan(student.student_id, dayKey, items);
+        toast(`Plano de ${WEEK.find((d) => d.key === dayKey).label} salvo.`);
+      } catch (error) {
+        window.alert(error.message || String(error));
+      } finally {
+        save.disabled = false;
+      }
+    });
+    actions.appendChild(add);
+    actions.appendChild(save);
+    body.appendChild(actions);
+  }
+
+  teacher.fetchStudentData(student.student_id).then((result) => {
+    studentData = (result && result.data) || { logs: {}, speeds: {}, plans: {} };
+    root.innerHTML =
+      `<h2>${student.student_email}</h2>` +
+      '<div class="progress-block"></div>' +
+      '<div class="sub" style="margin-top:16px">Planejar a semana</div>' +
+      '<div class="student-plan-body"></div>';
+    root.querySelector('.progress-block').appendChild(progressBlock());
+    loadDay();
+  }).catch((error) => {
+    root.innerHTML = `<h2>${student.student_email}</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`;
+  });
+
   return root;
 }
 
