@@ -4,6 +4,9 @@
 // Regras:
 //  - logs: cada exercício marcado (done) vale pelo carimbo de tempo mais novo; notas idem.
 //  - speeds e plans: vence o registro alterado por último (updatedAt).
+//  - plan (dentro de um log): foto do plano do dia, gravada uma vez no 1º toque e nunca mais
+//    mudada (ver store.js); os dois aparelhos calculam ela a partir do mesmo plano quase no
+//    mesmo instante, então não precisa de carimbo — só fica com quem já tiver uma.
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
@@ -21,7 +24,10 @@ function mergeLog(x, y) {
   const nx = x.notesAt || 0;
   const ny = y.notesAt || 0;
   const notesSource = nx >= ny ? x : y;
-  return { done, t, notes: notesSource.notes || '', notesAt: Math.max(nx, ny) };
+  const merged = { done, t, notes: notesSource.notes || '', notesAt: Math.max(nx, ny) };
+  const plan = x.plan || y.plan;
+  if (plan) merged.plan = plan;
+  return merged;
 }
 
 export function mergeLogs(a = {}, b = {}) {

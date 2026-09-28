@@ -621,18 +621,39 @@ function studentPlanView(student) {
 
     const dayOf = (dateObj) => WEEK.find((d) => d.weekday === dateObj.getDay()) || WEEK[0];
 
-    function exerciseDetail(day, planItems, log) {
+    // Com foto do plano daquele dia (hasSnapshot): sabemos com certeza o que foi oferecido, então
+    // "não concluído" pode ser afirmado mesmo sem toque nenhum (done começa false mesmo). Sem
+    // foto (log antigo, de antes dessa mudança): só dá pra confiar no que tem carimbo (log.t) —
+    // pra quem não foi tocado, não afirma "não concluído" (seria chute), diz que não há registro.
+    // Nos dois casos, exercícios tocados/concluídos que não estão em planItems também aparecem
+    // (fora do plano — pode ter sido removido do plano depois de ter sido feito).
+    function exerciseDetail(planItems, log, dateStr, hasSnapshot) {
       const detail = el('div', 'history-detail');
-      if (!planItems.length) { detail.appendChild(el('p', 'tip', 'Nenhum exercício planejado nesse dia.')); return detail; }
-      planItems.forEach((item) => {
-        const ex = EXERCISES[item.ex];
-        const done = Boolean(log && log.done && log.done[item.ex]);
-        const speed = studentData.speeds && studentData.speeds[item.ex];
+      const planIds = planItems.map((item) => item.ex);
+      const loggedIds = new Set([...Object.keys((log && log.done) || {}), ...Object.keys((log && log.t) || {})]);
+      planIds.forEach((id) => loggedIds.delete(id)); // já entram pela ordem do plano
+      const ids = [...planIds, ...loggedIds].filter((id) => EXERCISES[id]);
+
+      if (!ids.length) { detail.appendChild(el('p', 'tip', 'Nenhum exercício planejado nem registrado nesse dia.')); return detail; }
+      ids.forEach((id) => {
+        const ex = EXERCISES[id];
+        const touched = Boolean(log && log.t && log.t[id] != null);
+        const done = Boolean(log && log.done && log.done[id]);
+        const known = touched || (hasSnapshot && planIds.includes(id)); // sabemos o status de verdade
+        const speed = studentData.speeds && studentData.speeds[id];
         const bpm = speed ? speed.bpm : (ex.bpm ? ex.bpm.start : null);
+        const inPlan = planIds.includes(id);
+
+        let status;
+        if (known) status = done ? 'Concluído' : 'Não concluído';
+        else if (dateStr === todayISO) status = 'Ainda não feito hoje';
+        else status = 'Sem registro nesse dia — talvez não estivesse no plano ainda';
+        const mark = known ? (done ? '✓' : '·') : '?';
+
         const line = el('div', 'bank-item');
         line.innerHTML =
-          `<div class="bi-title">${done ? '✓' : '·'} ${ex.title}</div>` +
-          `<div class="bi-meta">${done ? 'Concluído' : 'Não concluído'}${bpm != null ? ' · ' + bpm + ' BPM' : ''}</div>`;
+          `<div class="bi-title">${mark} ${ex.title}${inPlan ? '' : ' (fora do plano desse dia)'}</div>` +
+          `<div class="bi-meta">${status}${(touched || done) && bpm != null ? ' · ' + bpm + ' BPM' : ''}</div>`;
         detail.appendChild(line);
       });
       return detail;
@@ -654,8 +675,12 @@ function studentPlanView(student) {
         const dateStr = isoDate(dateObj);
         const day = dayOf(dateObj);
         const log = (studentData.logs && studentData.logs[`${dateStr}_${day.key}`]) || null;
+        // Se o log tem a foto do plano daquele dia (planSnapshot, ver store.js), usa ela — é o
+        // que realmente existia ali. Sem foto (log antigo, de antes dessa mudança, ou dia sem
+        // nenhum toque ainda), cai no plano atual como melhor estimativa disponível.
+        const hasSnapshot = log && Array.isArray(log.plan);
         const custom = studentData.plans && studentData.plans[day.key];
-        const planItems = (custom && Array.isArray(custom.items) ? custom.items : day.plan)
+        const planItems = (hasSnapshot ? log.plan : (custom && Array.isArray(custom.items) ? custom.items : day.plan))
           .filter((item) => EXERCISES[item.ex]);
         const doneCount = log ? planItems.filter((item) => log.done && log.done[item.ex]).length : 0;
         const allDone = planItems.length > 0 && doneCount === planItems.length;
@@ -664,7 +689,7 @@ function studentPlanView(student) {
         const row = el('div', 'bank-item history-day');
         row.innerHTML =
           `<div class="bi-title">${day.label} · ${shortDate(dateObj)}${dateStr === todayISO ? ' (hoje)' : ''}</div>` +
-          `<div class="bi-meta">${doneCount}/${planItems.length} concluídos${allDone ? ' · tudo feito ✓' : ''}</div>` +
+          `<div class="bi-meta">${doneCount}/${planItems.length} concluídos${allDone ? ' · tudo feito ✓' : ''}${hasSnapshot ? '' : ' · plano estimado'}</div>` +
           (log && log.notes ? `<div class="bi-sub">“${log.notes}”</div>` : '') +
           `<div class="bi-flag">${isOpen ? '▾' : '▸'}</div>`;
         row.addEventListener('click', () => {
@@ -672,7 +697,7 @@ function studentPlanView(student) {
           drawList();
         });
         list.appendChild(row);
-        if (isOpen) list.appendChild(exerciseDetail(day, planItems, log));
+        if (isOpen) list.appendChild(exerciseDetail(planItems, log, dateStr, hasSnapshot));
       });
     }
 
@@ -1135,7 +1160,7 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
   sw.addEventListener('click', (e) => {
     e.stopPropagation();
     if (!canCheck) { toast('Este dia ainda não chegou.'); return; }
-    store.toggleDone(dateStr, day.key, item.ex);
+    store.toggleDone(dateStr, day.key, item.ex, plan);
     render();
   });
 
@@ -1327,7 +1352,7 @@ function renderDay() {
   const textarea = el('textarea', 'notes');
   textarea.placeholder = 'Como foi o treino? O que travou, o que fluiu...';
   textarea.value = log.notes || '';
-  textarea.addEventListener('input', () => store.setNotes(dateStr, day.key, textarea.value));
+  textarea.addEventListener('input', () => store.setNotes(dateStr, day.key, textarea.value, plan));
   notes.appendChild(textarea);
   container.appendChild(notes);
 }

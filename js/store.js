@@ -1,7 +1,10 @@
 // Armazenamento local (localStorage). Toda a persistência do app passa por aqui;
 // a sincronização com o Supabase (sync.js) usa snapshot() e applyRemote().
 //
-//   logs   { "2026-09-21_seg": { done: {exId: bool}, t: {exId: ms}, notes, notesAt } }
+//   logs   { "2026-09-21_seg": { done: {exId: bool}, t: {exId: ms}, notes, notesAt, plan? } }
+//            plan: foto do plano do dia no 1º toque (ver ensureLog) — congelada, nunca muda
+//            depois; sem ela (logs de antes dessa mudança), quem lê tem que usar o plano atual
+//            como estimativa (ver app.js, tela de andamento do professor)
 //   speeds { exId: { bpm, clean, errors, history: [{date, bpm}], updatedAt } }  — vale para sempre
 //   plans  { seg: { items: [{ex, min}] | null, updatedAt } }  — items null = plano padrão
 //   prefs  { metroBpm, metroBeats, metroSub }  — só deste aparelho, não sincroniza
@@ -61,13 +64,21 @@ function ensureSpeed(id, cfg, date) {
   return data.speeds[id];
 }
 
-function ensureLog(date, dayKey) {
+// planSnapshot: o plano do dia no momento do 1º toque, gravado uma vez e nunca mais mudado —
+// é o que permite ver depois "o que existia naquele dia", mesmo se o plano for editado no futuro
+// (pelo aluno ou pelo professor). Sem isso, o histórico de um dia passado ficava preso ao plano
+// ATUAL da semana, dando informação errada quando o plano mudava (achado testando com o usuário).
+function ensureLog(date, dayKey, planSnapshot) {
   const key = date + '_' + dayKey;
+  const isNew = !data.logs[key];
   const log = data.logs[key] || (data.logs[key] = { done: {}, t: {}, notes: '', notesAt: 0 });
   // registros criados antes dos carimbos de tempo não têm t/notesAt
   if (!log.done) log.done = {};
   if (!log.t) log.t = {};
   if (!log.notesAt) log.notesAt = 0;
+  if (isNew && !log.plan && Array.isArray(planSnapshot)) {
+    log.plan = planSnapshot.map((item) => ({ ex: item.ex, min: item.min }));
+  }
   return log;
 }
 
@@ -94,14 +105,14 @@ export const store = {
   getLog(date, dayKey) {
     return data.logs[date + '_' + dayKey] || { done: {}, t: {}, notes: '', notesAt: 0 };
   },
-  toggleDone(date, dayKey, exId) {
-    const log = ensureLog(date, dayKey);
+  toggleDone(date, dayKey, exId, planSnapshot) {
+    const log = ensureLog(date, dayKey, planSnapshot);
     log.done[exId] = !log.done[exId];
     log.t[exId] = now();
     save();
   },
-  setNotes(date, dayKey, text) {
-    const log = ensureLog(date, dayKey);
+  setNotes(date, dayKey, text, planSnapshot) {
+    const log = ensureLog(date, dayKey, planSnapshot);
     log.notes = text;
     log.notesAt = now();
     save();

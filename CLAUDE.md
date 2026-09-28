@@ -56,11 +56,19 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   salvar, porque `studentData` só é buscado 1 vez ao abrir a tela).
   Também mostra o **andamento** (pedido de usuário, 2026-09-28): `historyBlock()` deixa escolher
   um período (De/Até, padrão a semana atual) e lista cada data (mais recente primeiro) com quantos
-  exercícios do plano daquele dia foram marcados `done` em `logs` e a nota (`notes`) do aluno, se
-  houver; tocar numa data expande exercício a exercício (concluído ou não, e o BPM). Datas fora da
-  semana calendário funcionam igual (`logs`/`plans` são só por data e dia-da-semana, sem limite de
-  quão para trás vai). `progressBlock()` mostra BPM atual de cada exercício já praticado, mais
-  limpos/erros seguidos. Um botão "↻ Atualizar" refaz o fetch (os dados são só uma foto de quando
+  exercícios foram marcados `done` em `logs` e a nota (`notes`) do aluno, se houver; tocar numa
+  data expande exercício a exercício (concluído ou não, e o BPM). Datas fora da semana calendário
+  funcionam igual (`logs`/`plans` são só por data e dia-da-semana, sem limite de quão para trás
+  vai). Achado real testando: como só existe "o plano ATUAL de cada dia da semana" (sem
+  histórico), mostrar uma data passada usando o plano de hoje inventava exercício que não existia
+  ainda naquele dia. Corrigido gravando uma **foto do plano no 1º toque de cada dia**
+  (`log.plan`, congelada — ver `js/store.js` `ensureLog()`/`toggleDone()`/`setNotes()` e o merge
+  em `js/merge.js`); `historyBlock()` usa essa foto quando existe (`hasSnapshot`), e só cai no
+  plano atual como estimativa pra dias registrados antes dessa mudança (sem foto) — nesse caso
+  não afirma "não concluído" pra quem nunca foi tocado (seria chute), diz que não há registro.
+  Exercícios concluídos que saíram do plano continuam aparecendo (união com `log.done`/`log.t`).
+  `progressBlock()` mostra BPM atual de cada exercício já praticado, mais limpos/erros seguidos.
+  Um botão "↻ Atualizar" refaz o fetch (os dados são só uma foto de quando
   a tela abriu, não atualizam sozinhos).
 - `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
   usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem

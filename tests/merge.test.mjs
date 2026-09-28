@@ -63,6 +63,23 @@ test('merge é idempotente e comutativo quando os carimbos são distintos', () =
   assert.ok(sameData(ab, mergeData(ab, ab)));
 });
 
+test('log.plan (foto do plano do dia): mantém quando só um lado tem, e não perde no merge', () => {
+  const withPlan = { logs: { k: log({ chroma: true }, { chroma: 100 }) } };
+  withPlan.logs.k.plan = [{ ex: 'chroma', min: 10 }];
+  const without = { logs: { k: log({ chroma: true }, { chroma: 100 }) } };
+  assert.deepEqual(mergeData(withPlan, without).logs.k.plan, [{ ex: 'chroma', min: 10 }]);
+  assert.deepEqual(mergeData(without, withPlan).logs.k.plan, [{ ex: 'chroma', min: 10 }]);
+});
+
+test('log.plan: se os dois lados já têm (2 aparelhos criando o mesmo dia quase junto), fica um dos dois, não vira null', () => {
+  const a = { logs: { k: log({}, {}) } };
+  a.logs.k.plan = [{ ex: 'chroma', min: 10 }];
+  const b = { logs: { k: log({}, {}) } };
+  b.logs.k.plan = [{ ex: 'chroma', min: 10 }]; // mesmo plano, calculado nos dois aparelhos
+  const merged = mergeData(a, b).logs.k;
+  assert.deepEqual(merged.plan, [{ ex: 'chroma', min: 10 }]);
+});
+
 test('sameData ignora a ordem das chaves (o jsonb do Postgres reordena)', () => {
   assert.ok(sameData({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 3, c: 2 }, a: 1 }));
   assert.ok(!sameData({ a: 1 }, { a: 2 }));
