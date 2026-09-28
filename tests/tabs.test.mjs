@@ -214,21 +214,20 @@ test('gd_lick (Sol/Ré): célula de 8 notas repetida 4 vezes, fechando na Sol �
   });
 });
 
-test('speed_124 (tercinas 1-2-4/1-3-4, Ré/Sol): bate nota a nota e repete 4x cada bloco', () => {
+test('speed_124 (tercinas 1-2-4/1-3-4, Ré/Sol): cada casa é uma aba própria, repetindo 4x sozinha', () => {
   const STR = ['e', 'B', 'G', 'D', 'A', 'E'];
   const measure = (base, fingers) => {
     const mid = fingers === '124' ? base + 1 : base + 2;
     return ['D' + base, 'D' + mid, 'D' + (base + 3), 'G' + base, 'D' + (base + 3), 'D' + mid];
   };
-  const pair = (b1, b2) => [...measure(b1, '124'), ...measure(b2, '134')];
+  const expected = [
+    [2, '124'], [3, '134'], [5, '124'], [6, '134'], [8, '124'], [9, '134'], [11, '124'],
+  ]; // já eram '124'/'134' (o bug era no código de exercises.js, não aqui)
   const tabs = EXERCISES.speed_124.tabs;
-  assert.equal(tabs.length, 4);
-  [[2, 3], [5, 6], [8, 9]].forEach(([b1, b2], i) => {
+  assert.equal(tabs.length, expected.length);
+  expected.forEach(([base, fingers], i) => {
     const got = tabs[i].play.cols.map(([[string, fret]]) => STR[string] + fret);
-    assert.deepEqual(got, pair(b1, b2), `par ${b1}-${b2}`);
-    assert.equal(tabs[i].play.repeat, 4);
+    assert.deepEqual(got, measure(base, fingers), `casa ${base} (${fingers})`);
+    assert.equal(tabs[i].play.repeat, 4, `casa ${base}: repeat`);
   });
-  const gotFinal = tabs[3].play.cols.map(([[string, fret]]) => STR[string] + fret);
-  assert.deepEqual(gotFinal, measure(11, '124'));
-  assert.equal(tabs[3].play.repeat, 4);
 });

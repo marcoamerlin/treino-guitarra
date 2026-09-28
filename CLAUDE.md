@@ -142,12 +142,18 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   a velocidade aos poucos"), de uma imagem de referência (Guitar Mastery). Sempre nas cordas Ré e
   Sol: tercinas com dedos 1-2-4 (offsets 0,1,3 — pula o dedo 3) alternando com 1-3-4 (offsets
   0,2,3 — pula o dedo 2). 1ª tercina de cada compasso fica toda na Ré; a 2ª começa na Sol (mesma
-  casa-base) e volta pra Ré com as duas casas de cima invertidas. Sobe de posição a cada par de
-  compassos (2-3 → 5-6 → 8-9), termina sozinho na casa 11. Cada bloco usa `repeat: 4` no `play`
-  (toca 4x na hora de ouvir, sem duplicar dados) — mesmo mecanismo já usado em riff1Tab/riff2Tab.
+  casa-base) e volta pra Ré com as duas casas de cima invertidas.
   Conferido compasso a compasso com o usuário (a imagem tinha mais linhas/cordas do que pareceu
   à primeira vista — ver histórico do projeto: errei duas vezes achando que era tudo numa corda só
   antes de confirmar Ré+Sol fixas o exercício inteiro).
+  Bug real encontrado pelo usuário DEPOIS de já publicado: cada compasso repete 4x **sozinho**
+  (casa 2 quatro vezes, depois casa 3 quatro vezes...), não o par 1-2-4+1-3-4 junto repetindo 4x
+  — a 1ª versão juntava os dois num só `cols` com `repeat:4`, tocando 1-2-4,1-3-4,1-2-4,1-3-4...
+  em vez de 1-2-4×4 depois 1-3-4×4. Corrigido: 7 abas, uma por casa (2,3,5,6,8,9,11), cada uma
+  com `repeat: 4` própria. Nessa correção quase reintroduzi outro bug: `speedMeasureTab` chamava
+  `speedMeasure(base, fingers)` passando o rótulo bonito ("1-2-4", com traços) em vez do valor
+  que a função compara (`'124'`, sem traços) — todo compasso teria saído com o dedilhado 1-3-4
+  por engano. Pego antes de publicar, rodando os testes.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
