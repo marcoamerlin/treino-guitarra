@@ -610,30 +610,82 @@ function studentPlanView(student) {
   let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
   let items = [];
 
-  // Dias concluídos (do quanto tinha no plano daquele dia) + observações do aluno, na semana
-  // atual — usa a mesma data por dia da semana que o app do aluno usa (dateFor), então bate com
-  // o que ele vê na própria tela.
-  function weekBlock() {
+  // Dias concluídos (do quanto tinha no plano daquele dia) + observações do aluno, num período
+  // escolhido pelo professor (padrão: semana atual). Cada dia expande ao tocar, mostrando
+  // exercício a exercício: concluído ou não, e em qual BPM.
+  function historyBlock() {
     const box = el('div');
-    box.innerHTML = '<div class="sub">Semana atual</div>';
-    const list = el('div');
-    WEEK.forEach((day) => {
-      const dateObj = dateFor(day.weekday);
-      const dateStr = isoDate(dateObj);
-      const log = (studentData.logs && studentData.logs[`${dateStr}_${day.key}`]) || null;
-      const custom = studentData.plans && studentData.plans[day.key];
-      const planItems = (custom && Array.isArray(custom.items) ? custom.items : day.plan)
-        .filter((item) => EXERCISES[item.ex]);
-      const doneCount = log ? planItems.filter((item) => log.done && log.done[item.ex]).length : 0;
-      const allDone = planItems.length > 0 && doneCount === planItems.length;
-      const row = el('div', 'bank-item');
-      row.innerHTML =
-        `<div class="bi-title">${day.label} · ${shortDate(dateObj)}${dateStr === todayISO ? ' (hoje)' : ''}</div>` +
-        `<div class="bi-meta">${doneCount}/${planItems.length} concluídos${allDone ? ' · tudo feito ✓' : ''}</div>` +
-        (log && log.notes ? `<div class="bi-sub">“${log.notes}”</div>` : '');
-      list.appendChild(row);
-    });
-    box.appendChild(list);
+    let fromStr = isoDate(dateFor(1)); // segunda desta semana
+    let toStr = isoDate(dateFor(0)); // domingo desta semana
+    const openDates = new Set();
+
+    const dayOf = (dateObj) => WEEK.find((d) => d.weekday === dateObj.getDay()) || WEEK[0];
+
+    function exerciseDetail(day, planItems, log) {
+      const detail = el('div', 'history-detail');
+      if (!planItems.length) { detail.appendChild(el('p', 'tip', 'Nenhum exercício planejado nesse dia.')); return detail; }
+      planItems.forEach((item) => {
+        const ex = EXERCISES[item.ex];
+        const done = Boolean(log && log.done && log.done[item.ex]);
+        const speed = studentData.speeds && studentData.speeds[item.ex];
+        const bpm = speed ? speed.bpm : (ex.bpm ? ex.bpm.start : null);
+        const line = el('div', 'bank-item');
+        line.innerHTML =
+          `<div class="bi-title">${done ? '✓' : '·'} ${ex.title}</div>` +
+          `<div class="bi-meta">${done ? 'Concluído' : 'Não concluído'}${bpm != null ? ' · ' + bpm + ' BPM' : ''}</div>`;
+        detail.appendChild(line);
+      });
+      return detail;
+    }
+
+    function drawList() {
+      const list = box.querySelector('.history-list');
+      list.innerHTML = '';
+      const from = new Date(`${fromStr}T00:00:00`);
+      const to = new Date(`${toStr}T00:00:00`);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
+        list.appendChild(el('p', 'tip', 'Escolha um período válido (de ≤ até).'));
+        return;
+      }
+      const dates = [];
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) dates.push(new Date(d));
+      dates.reverse(); // mais recente primeiro
+      dates.forEach((dateObj) => {
+        const dateStr = isoDate(dateObj);
+        const day = dayOf(dateObj);
+        const log = (studentData.logs && studentData.logs[`${dateStr}_${day.key}`]) || null;
+        const custom = studentData.plans && studentData.plans[day.key];
+        const planItems = (custom && Array.isArray(custom.items) ? custom.items : day.plan)
+          .filter((item) => EXERCISES[item.ex]);
+        const doneCount = log ? planItems.filter((item) => log.done && log.done[item.ex]).length : 0;
+        const allDone = planItems.length > 0 && doneCount === planItems.length;
+        const isOpen = openDates.has(dateStr);
+
+        const row = el('div', 'bank-item history-day');
+        row.innerHTML =
+          `<div class="bi-title">${day.label} · ${shortDate(dateObj)}${dateStr === todayISO ? ' (hoje)' : ''}</div>` +
+          `<div class="bi-meta">${doneCount}/${planItems.length} concluídos${allDone ? ' · tudo feito ✓' : ''}</div>` +
+          (log && log.notes ? `<div class="bi-sub">“${log.notes}”</div>` : '') +
+          `<div class="bi-flag">${isOpen ? '▾' : '▸'}</div>`;
+        row.addEventListener('click', () => {
+          if (openDates.has(dateStr)) openDates.delete(dateStr); else openDates.add(dateStr);
+          drawList();
+        });
+        list.appendChild(row);
+        if (isOpen) list.appendChild(exerciseDetail(day, planItems, log));
+      });
+    }
+
+    box.innerHTML =
+      '<div class="sub">Andamento — escolha o período e toque num dia para ver exercício a exercício</div>' +
+      '<div class="date-range account-form">' +
+        `<label>De<input type="date" class="from-date" value="${fromStr}"></label>` +
+        `<label>Até<input type="date" class="to-date" value="${toStr}"></label>` +
+      '</div>' +
+      '<div class="history-list"></div>';
+    box.querySelector('.from-date').addEventListener('change', (e) => { fromStr = e.target.value; drawList(); });
+    box.querySelector('.to-date').addEventListener('change', (e) => { toStr = e.target.value; drawList(); });
+    drawList();
     return box;
   }
 
@@ -827,7 +879,7 @@ function studentPlanView(student) {
         '<div class="sub" style="margin-top:16px">Planejar a semana</div>' +
         '<div class="student-plan-body"></div>';
       root.querySelector('[data-refresh]').addEventListener('click', loadAll);
-      root.querySelector('.week-block').appendChild(weekBlock());
+      root.querySelector('.week-block').appendChild(historyBlock());
       root.querySelector('.progress-block').appendChild(progressBlock());
       loadDay();
     }).catch((error) => {
