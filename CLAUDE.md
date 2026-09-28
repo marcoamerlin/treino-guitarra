@@ -70,6 +70,14 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   `progressBlock()` mostra BPM atual de cada exercício já praticado, mais limpos/erros seguidos.
   Um botão "↻ Atualizar" refaz o fetch (os dados são só uma foto de quando
   a tela abriu, não atualizam sozinhos).
+  Atalho no cabeçalho (pedido de usuário, 2026-09-28): botão "🎓 Alunos" (`#teacherBtn` no
+  index.html) abre direto `myStudentsView()` — mesma lista de alunos de dentro de "Conta e
+  sincronização", sem passar por lá. Só aparece (`hidden`) pra quem já tem pelo menos 1 aluno
+  vinculado; `refreshTeacherPill()` decide isso, chamada ao logar/trocar de conta (não a cada
+  tick de sync — só quando o e-mail muda) e depois de qualquer entra/sai de aluno.
+  Bug real encontrado nisso: o atributo HTML `hidden` não escondia o botão, porque
+  `.metro-pill { display: flex }` (mesma especificidade do `[hidden]` do navegador) vencia por
+  vir depois na cascata — corrigido com uma regra `[hidden] { display: none !important; }`.
 - `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
   usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem
   do Google) e pode disputar com o som do amplificador. parseCommand() é pura/testável; o resto só

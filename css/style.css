@@ -97,6 +97,8 @@ header.faceplate::before {
 .streak-label { font-size: 10.5px; color: var(--text-faint); letter-spacing: 0.4px; }
 
 .faceplate-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; position: relative; }
+[hidden] { display: none !important; }
+
 .metro-pill, .sync-pill {
   display: flex; align-items: center; gap: 9px;
   min-height: 44px;

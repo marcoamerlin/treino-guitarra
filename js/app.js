@@ -542,23 +542,6 @@ function teacherSectionView() {
     return box;
   }
 
-  function studentRow(student) {
-    const row = el('div', 'bank-item');
-    row.innerHTML =
-      `<div class="bi-title">${student.student_email}</div>` +
-      '<div class="bi-sub">Toque em Planejar para montar a semana dele.</div>' +
-      '<div class="day-actions" style="margin-top:8px"><button class="action" data-plan>Planejar</button>' +
-      '<button class="action" data-unlink>Desvincular</button></div>';
-    row.querySelector('[data-plan]').addEventListener('click', () => openSheet(studentPlanView(student)));
-    row.querySelector('[data-unlink]').addEventListener('click', async () => {
-      if (!window.confirm(`Desvincular o aluno ${student.student_email}?`)) return;
-      await teacher.unlink(student.student_id);
-      students = students.filter((s) => s.student_id !== student.student_id);
-      redraw();
-    });
-    return row;
-  }
-
   function teacherBlock() {
     const box = el('div');
     if (codeRevealed === null) {
@@ -581,7 +564,11 @@ function teacherSectionView() {
       '<div class="sub">Meus alunos</div>';
     const list = el('div', 'bank-list');
     if (!students.length) list.appendChild(el('p', 'empty', 'Nenhum aluno vinculado ainda.'));
-    students.forEach((s) => list.appendChild(studentRow(s)));
+    students.forEach((s) => list.appendChild(studentRow(s, () => {
+      students = students.filter((x) => x.student_id !== s.student_id);
+      redraw();
+      refreshTeacherPill();
+    })));
     box.appendChild(list);
     return box;
   }
@@ -594,10 +581,64 @@ function teacherSectionView() {
   }
 
   Promise.all([teacher.myTeacher(), teacher.listStudents()])
-    .then(([mine, list]) => { myTeacherRow = mine; students = list; redraw(); })
+    .then(([mine, list]) => { myTeacherRow = mine; students = list; redraw(); refreshTeacherPill(); })
     .catch((error) => { root.innerHTML = `<p class="tip">Não consegui carregar: ${error.message || error}</p>`; });
 
   return root;
+}
+
+// Uma linha "aluno" reaproveitada pela tela de conta (teacherSectionView) e pelo atalho rápido
+// (myStudentsView, pelo botão "🎓 Alunos" do cabeçalho). onUnlink já cuida de tirar da lista
+// local depois de desvincular no banco.
+function studentRow(student, onUnlink) {
+  const row = el('div', 'bank-item');
+  row.innerHTML =
+    `<div class="bi-title">${student.student_email}</div>` +
+    '<div class="bi-sub">Toque em Planejar para montar a semana dele.</div>' +
+    '<div class="day-actions" style="margin-top:8px"><button class="action" data-plan>Planejar</button>' +
+    '<button class="action" data-unlink>Desvincular</button></div>';
+  row.querySelector('[data-plan]').addEventListener('click', () => openSheet(studentPlanView(student)));
+  row.querySelector('[data-unlink]').addEventListener('click', async () => {
+    if (!window.confirm(`Desvincular o aluno ${student.student_email}?`)) return;
+    await teacher.unlink(student.student_id);
+    onUnlink();
+  });
+  return row;
+}
+
+// Atalho direto pro professor: botão "🎓 Alunos" no cabeçalho, só visível se já tiver pelo menos
+// 1 aluno vinculado (ver refreshTeacherPill) — evita o caminho Conta → Sou professor → lista.
+function myStudentsView() {
+  const root = el('div');
+  root.innerHTML = '<h2>Meus alunos</h2><p class="sub">Carregando…</p>';
+  let students = [];
+
+  function redraw() {
+    root.innerHTML = '<h2>Meus alunos</h2>';
+    const list = el('div', 'bank-list');
+    if (!students.length) list.appendChild(el('p', 'empty', 'Nenhum aluno vinculado no momento.'));
+    students.forEach((s) => list.appendChild(studentRow(s, () => {
+      students = students.filter((x) => x.student_id !== s.student_id);
+      redraw();
+      refreshTeacherPill();
+    })));
+    root.appendChild(list);
+  }
+
+  teacher.listStudents().then((list) => { students = list; redraw(); })
+    .catch((error) => { root.innerHTML = `<h2>Meus alunos</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`; });
+
+  return root;
+}
+
+// Mostra/esconde o botão "🎓 Alunos" do cabeçalho: só habilita pra quem já é professor de
+// alguém (pelo menos 1 aluno vinculado). Silencioso em erro — o botão some, sem toast/alerta.
+function refreshTeacherPill() {
+  const btn = $('#teacherBtn');
+  if (!teacher.available()) { btn.hidden = true; return; }
+  teacher.listStudents()
+    .then((list) => { btn.hidden = list.length === 0; })
+    .catch(() => { btn.hidden = true; });
 }
 
 // Tela do professor pra planejar a semana de um aluno específico: progresso resumido (BPM e
@@ -1409,9 +1450,12 @@ metronome.on('beat', ({ accent }) => {
   });
 });
 
+let teacherPillEmail; // só refaz o fetch de alunos quando troca de conta, não a cada tick de sync
 sync.onState(() => {
   updateSyncPill();
   sheetRedrawers.forEach((fn) => fn());
+  const email = sync.getState().email;
+  if (email !== teacherPillEmail) { teacherPillEmail = email; refreshTeacherPill(); }
 });
 // Outro aparelho trouxe novidades: redesenha, sem atrapalhar quem está digitando uma nota.
 store.onRemoteChange(() => {
@@ -1421,6 +1465,7 @@ store.onRemoteChange(() => {
 
 $('#metroBtn').addEventListener('click', () => openSheet(metronomeView()));
 $('#syncBtn').addEventListener('click', () => openSheet(accountView()));
+$('#teacherBtn').addEventListener('click', () => openSheet(myStudentsView()));
 render();
 updateSyncPill();
 sync.init();
