@@ -654,11 +654,23 @@ function studentPlanView(student) {
       const row = el('div', 'bank-item');
       row.innerHTML =
         `<div class="bi-title">${ex ? ex.title : item.ex}</div>` +
-        `<div class="bi-meta">${ex ? CATEGORIES[ex.cat] : ''} · ${item.min} min</div>` +
+        `<div class="bi-meta">${ex ? CATEGORIES[ex.cat] : ''}</div>` +
         '<div class="day-actions" style="margin-top:8px">' +
-          '<button class="action" data-up>↑</button><button class="action" data-down>↓</button>' +
+          '<button class="action" data-minus-min>−5 min</button>' +
+          `<span class="mins">${item.min} min</span>` +
+          '<button class="action" data-plus-min>+5 min</button>' +
+          `<button class="action" data-up${i === 0 ? ' disabled' : ''}>↑</button>` +
+          `<button class="action" data-down${i === items.length - 1 ? ' disabled' : ''}>↓</button>` +
           '<button class="action" data-remove>Remover</button>' +
         '</div>';
+      row.querySelector('[data-minus-min]').addEventListener('click', () => {
+        item.min = Math.max(5, item.min - 5);
+        drawPlan();
+      });
+      row.querySelector('[data-plus-min]').addEventListener('click', () => {
+        item.min = Math.min(90, item.min + 5);
+        drawPlan();
+      });
       row.querySelector('[data-up]').addEventListener('click', () => {
         if (i === 0) return;
         [items[i - 1], items[i]] = [items[i], items[i - 1]];
@@ -673,6 +685,39 @@ function studentPlanView(student) {
         items.splice(i, 1);
         drawPlan();
       });
+
+      // BPM: só para exercícios com metrônomo. Grava na hora (não espera o "Salvar plano"),
+      // igual à régua +/- do próprio exercício — é um dado à parte (speeds), não do plano.
+      if (ex && ex.bpm) {
+        const step = ex.bpm.step || 4;
+        const current = (studentData.speeds && studentData.speeds[item.ex] && studentData.speeds[item.ex].bpm)
+          || ex.bpm.start;
+        const bpmRow = el('div', 'day-actions', '');
+        bpmRow.innerHTML =
+          `<button class="action" data-bpm="${-step}">−${step} BPM</button>` +
+          `<span class="mins" data-bpm-val>${current} BPM</span>` +
+          `<button class="action" data-bpm="${step}">+${step} BPM</button>`;
+        const valEl = bpmRow.querySelector('[data-bpm-val]');
+        bpmRow.querySelectorAll('[data-bpm]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            bpmRow.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+            try {
+              const bpm = await teacher.writeStudentSpeed(
+                student.student_id, item.ex, Number(btn.dataset.bpm), ex.bpm.start, todayISO,
+              );
+              studentData.speeds = studentData.speeds || {};
+              studentData.speeds[item.ex] = { ...(studentData.speeds[item.ex] || {}), bpm, clean: 0, errors: 0 };
+              valEl.textContent = `${bpm} BPM`;
+            } catch (error) {
+              window.alert(error.message || String(error));
+            } finally {
+              bpmRow.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+            }
+          });
+        });
+        row.appendChild(bpmRow);
+      }
+
       list.appendChild(row);
     });
     return list;

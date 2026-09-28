@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   myCode, linkToTeacher, myTeacher, listStudents, unlink, fetchStudentData, writeStudentPlan,
+  writeStudentSpeed,
 } from '../js/teacher-core.js';
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
@@ -188,4 +189,35 @@ test('writeStudentPlan: se o aluno grava no meio da rodada, refaz e não perde a
   await writeStudentPlan(client, 's1', 'seg', [{ ex: 'chroma', min: 5 }]);
   assert.equal(db.user_data[0].rev, 3); // 1 -> (conflito, rev virou 2 por fora) -> refaz -> 3
   assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 5 }]);
+});
+
+test('writeStudentSpeed: cria a linha do aluno (nunca sincronizou) a partir do bpm inicial do exercício', async () => {
+  const { client, db } = makeServer();
+  const bpm = await writeStudentSpeed(client, 's1', 'chroma', 4, 60, '2026-09-28');
+  assert.equal(bpm, 64); // 60 (start) + 4
+  assert.equal(db.user_data[0].data.speeds.chroma.bpm, 64);
+  assert.equal(db.user_data[0].data.speeds.chroma.clean, 0);
+  assert.deepEqual(db.user_data[0].data.speeds.chroma.history, [{ date: '2026-09-28', bpm: 64 }]);
+});
+
+test('writeStudentSpeed: soma ao bpm atual do aluno (não ao "start" do exercício) e respeita limites', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push({
+    user_id: 's1', rev: 1,
+    data: { logs: {}, plans: {}, speeds: { chroma: { bpm: 258, clean: 3, errors: 0, history: [] } } },
+  });
+  const bpm = await writeStudentSpeed(client, 's1', 'chroma', 4, 60, '2026-09-28');
+  assert.equal(bpm, 260); // 258+4=262, mas o teto é 260
+  assert.equal(db.user_data[0].data.speeds.chroma.clean, 0); // zera ao ajustar, igual ao store.js
+});
+
+test('writeStudentSpeed: só mexe em speeds, não em plans nem logs', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push({
+    user_id: 's1', rev: 1,
+    data: { logs: { x: 1 }, plans: { seg: { items: [{ ex: 'chroma', min: 10 }], updatedAt: 1 } }, speeds: {} },
+  });
+  await writeStudentSpeed(client, 's1', 'chroma', -4, 60, '2026-09-28');
+  assert.deepEqual(db.user_data[0].data.logs, { x: 1 });
+  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 10 }]);
 });

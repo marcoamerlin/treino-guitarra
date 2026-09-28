@@ -8,6 +8,9 @@
 
 const MAX_ATTEMPTS = 4;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O/1/I, pra não confundir no dedo
+const MIN_BPM = 30;
+const MAX_BPM = 260;
+const clampBpm = (bpm) => Math.min(MAX_BPM, Math.max(MIN_BPM, bpm));
 
 function randomCode(len = 6) {
   let out = '';
@@ -111,6 +114,51 @@ export async function writeStudentPlan(client, studentId, dayKey, items) {
     if (updateError) throw updateError;
     if (updated && updated.length) return;
     // rev mudou entre a leitura e a escrita (aluno sincronizou nesse meio-tempo): refaz.
+  }
+  throw new Error('Não consegui salvar agora (o aluno estava sincronizando). Tente de novo.');
+}
+
+function pushHistory(speed, dateStr) {
+  const history = [...(speed.history || [])];
+  const last = history[history.length - 1];
+  if (last && last.date === dateStr) last.bpm = speed.bpm;
+  else history.push({ date: dateStr, bpm: speed.bpm });
+  return history.slice(-60);
+}
+
+// Professor ajusta a velocidade (BPM) de um exercício do aluno — mesmo formato de store.js
+// (bpm/clean/errors/history), controle otimista igual a writeStudentPlan. delta é somado ao BPM
+// atual do aluno (ou ao "start" do exercício, se ele nunca tiver praticado esse exercício ainda);
+// zera clean/errors, do mesmo jeito que ajustar na régua +/- durante o treino.
+export async function writeStudentSpeed(client, studentId, exId, delta, startBpm, dateStr) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { data: row, error } = await client
+      .from('user_data').select('data, rev').eq('user_id', studentId).maybeSingle();
+    if (error) throw error;
+
+    const current = row && row.data.speeds && row.data.speeds[exId];
+    const bpm = clampBpm((current ? current.bpm : startBpm) + delta);
+    const speed = { ...(current || {}), bpm, clean: 0, errors: 0, updatedAt: Date.now() };
+    speed.history = pushHistory(speed, dateStr);
+
+    if (!row) {
+      const fresh = { logs: {}, plans: {}, speeds: { [exId]: speed } };
+      const { error: insertError } = await client
+        .from('user_data').insert({ user_id: studentId, data: fresh, rev: 1 });
+      if (!insertError) return bpm;
+      if (insertError.code === '23505') continue;
+      throw insertError;
+    }
+
+    const nextData = { ...row.data, speeds: { ...(row.data.speeds || {}), [exId]: speed } };
+    const { data: updated, error: updateError } = await client
+      .from('user_data')
+      .update({ data: nextData, rev: row.rev + 1, updated_at: new Date().toISOString() })
+      .eq('user_id', studentId)
+      .eq('rev', row.rev)
+      .select('rev');
+    if (updateError) throw updateError;
+    if (updated && updated.length) return bpm;
   }
   throw new Error('Não consegui salvar agora (o aluno estava sincronizando). Tente de novo.');
 }

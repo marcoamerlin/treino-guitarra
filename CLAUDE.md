@@ -38,15 +38,22 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   `student_id` é a chave — um aluno tem no máximo 1 professor por vez; vincular de novo troca).
   RLS de `user_data` foi estendida (ver `supabase/schema.sql`) pra um professor ler/gravar a linha
   de alunos vinculados — a policy libera a LINHA inteira por simplicidade (confiança do tamanho do
-  grupo: poucos professores conhecidos), mas o app só escreve em `plans`, nunca em `logs`/`speeds`.
-  `writeStudentPlan()` usa controle otimista igual ao `sync-core.js` (lê rev, grava só se não
-  mudou, refaz em caso de conflito) — sem isso, o professor editando ao mesmo tempo que o aluno
-  sincroniza podia perder escrita de um dos dois. Continua precisando criar a conta de cada pessoa
-  à mão no painel (cadastro público desligado); o código só cria o vínculo, não a conta. Teste:
-  `tests/teacher.test.mjs`, com um Supabase de mentira no mesmo espírito de `tests/sync.test.mjs`.
+  grupo: poucos professores conhecidos), mas o app só escreve em `plans` e `speeds`, nunca em
+  `logs` (o registro de "fiz esse exercício hoje" é só do aluno). `writeStudentPlan()` e
+  `writeStudentSpeed()` (BPM de um exercício do aluno — pedido de usuário, 2026-09-28: o
+  professor também define tempo/BPM, não só quais exercícios) usam controle otimista igual ao
+  `sync-core.js` (lê rev, grava só essa chave, grava se rev não mudou, refaz em conflito) — sem
+  isso, o professor editando ao mesmo tempo que o aluno sincroniza podia perder escrita de um dos
+  dois. Continua precisando criar a conta de cada pessoa à mão no painel (cadastro público
+  desligado); o código só cria o vínculo, não a conta. Teste: `tests/teacher.test.mjs`, com um
+  Supabase de mentira no mesmo espírito de `tests/sync.test.mjs`.
   UI: dentro da folha "Conta e sincronização" (`teacherSectionView()`/`studentPlanView()` em
   app.js) — o editor de plano do aluno é uma versão simplificada do "Editar dia" pessoal (sem
-  timer/áudio/comando de voz, só a lista de exercícios), porque o professor só planeja, não toca.
+  timer/áudio/comando de voz), com minutos e BPM editáveis por exercício; o BPM grava na hora
+  (é campo à parte, `speeds`, não faz parte do plano), os outros campos só ao "Salvar plano deste
+  dia". Depois de salvar, a cópia local de `studentData` é atualizada manualmente (bug real
+  encontrado testando: sem isso, trocar de aba de dia e voltar mostrava o plano de antes de
+  salvar, porque `studentData` só é buscado 1 vez ao abrir a tela).
 - `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
   usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem
   do Google) e pode disputar com o som do amplificador. parseCommand() é pura/testável; o resto só
