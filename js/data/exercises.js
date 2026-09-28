@@ -93,6 +93,24 @@ const gdLickTabs = [1, 5, 9].map((base) => dslTab(
   gdLickDsl(base), { perBeat: 2, pick: 'alt' },
 ));
 
+// Exercício de velocidade nas cordas Ré e Sol (mesmas duas cordas do início ao fim — conferido
+// com o usuário): dois compassos por "casa", tercinas com dedos 1-2-4 (offsets 0,1,3) e depois
+// 1-3-4 (offsets 0,2,3). A 1ª tercina fica toda na Ré; a 2ª começa na Sol (mesma casa-base) e
+// volta pra Ré com as duas casas de cima invertidas. Sobe de posição a cada par (2/3 → 5/6 →
+// 8/9), 4 compassos sozinho no fim (casa 11). Cada bloco repete 4x (ver CLAUDE.md).
+const speedMeasure = (base, fingers) => {
+  const mid = fingers === '124' ? base + 1 : base + 2; // 1-2-4: pula 1 casa; 1-3-4: pula 2
+  return [[3, base], [3, mid], [3, base + 3], [2, base], [3, base + 3], [3, mid]].map((n) => [n]);
+};
+const speedPairTab = (b1, b2) => {
+  const cols = [...speedMeasure(b1, '124'), ...speedMeasure(b2, '134')];
+  return makeTab(`Casas ${b1}-${b2}, repete 4x`, cols,
+    { pick: alternate(cols.length) }, { perBeat: 3, voice: 'clean', repeat: 4 });
+};
+const speedFinalTab = makeTab('Casa 11, sozinho, repete 4x', speedMeasure(11, '124'),
+  { pick: alternate(6) }, { perBeat: 3, voice: 'clean', repeat: 4 });
+const speedTabs = [speedPairTab(2, 3), speedPairTab(5, 6), speedPairTab(8, 9), speedFinalTab];
+
 // Riff em Lá: colcheias de 4 tempos, palm mute. Dois compassos que se repetem.
 const COUNT = ['1', 'e', '2', 'e', '3', 'e', '4', 'e'];
 const riffChords = ['A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'D5', 'D5', 'A5', 'A5', 'A5', 'A5', 'C5', 'C5', 'E5', 'E5'];
@@ -401,6 +419,26 @@ export const EXERCISES = {
     tips: [
       'O salto Sol→Ré→Sol é pequeno (cordas vizinhas), mas repetido rápido cansa o pulso. Mantenha o movimento da mão pequeno e relaxado.',
       'Grave-se tocando: numa frase repetitiva como essa, é fácil acelerar sem perceber. Confira se as 4 repetições saem no mesmo tempo.',
+    ],
+  },
+
+  speed_124: {
+    title: 'Velocidade — tercinas 1-2-4 / 1-3-4',
+    subtitle: 'Cordas Ré e Sol, subindo de posição',
+    cat: 'tecnica',
+    min: 10,
+    bpm: { start: 60, goal: 110 },
+    tabs: speedTabs,
+    steps: [
+      'Exercício de velocidade pura, sempre nas mesmas duas cordas: <strong>Ré e Sol</strong>. Cada "casa" tem 2 compassos: um com dedos <strong>1-2-4</strong> (pula o dedo 3) e outro com <strong>1-3-4</strong> (pula o dedo 2).',
+      'Em cada compasso, a 1ª tercina fica toda na corda Ré (ex.: 2-3-5). A 2ª tercina começa na corda <strong>Sol, na mesma casa</strong> da base (ex.: 2), e volta pra Ré com as duas casas de cima só que invertidas (5-3).',
+      'Sobe de posição a cada par de compassos: casas 2-3, depois 5-6, depois 8-9, e por fim fica <strong>sozinho</strong> na casa 11 (só o compasso 1-2-4).',
+      'Cada bloco (cada par, e o final sozinho) repete <strong>4 vezes</strong> antes de mudar de posição.',
+      'Palhetada alternada, sempre em tercinas (3 notas por tempo).',
+    ],
+    tips: [
+      'Esse é um exercício de <strong>velocidade pura</strong>, sem se preocupar com melodia — o objetivo é só subir o metrônomo com limpeza.',
+      'O salto pra corda Sol no meio da tercina é o ponto mais fácil de errar. Isole só essa troca (a última nota da Ré antes do salto + a nota na Sol) até sair automático.',
     ],
   },
 

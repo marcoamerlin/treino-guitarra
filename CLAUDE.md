@@ -90,6 +90,16 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   contexto da semana em Lá menor. `gdLickDsl(base)` gera o desenho pra qualquer casa; o exercício
   traz 3 posições (casas 1, 5 e 9) como abas — mesmo desenho, só desliza a mão, a pedido do
   usuário depois de conferir a casa 9.
+- `speed_124` em exercises.js: exercício de velocidade pura (pedido do usuário: "algo pra aumentar
+  a velocidade aos poucos"), de uma imagem de referência (Guitar Mastery). Sempre nas cordas Ré e
+  Sol: tercinas com dedos 1-2-4 (offsets 0,1,3 — pula o dedo 3) alternando com 1-3-4 (offsets
+  0,2,3 — pula o dedo 2). 1ª tercina de cada compasso fica toda na Ré; a 2ª começa na Sol (mesma
+  casa-base) e volta pra Ré com as duas casas de cima invertidas. Sobe de posição a cada par de
+  compassos (2-3 → 5-6 → 8-9), termina sozinho na casa 11. Cada bloco usa `repeat: 4` no `play`
+  (toca 4x na hora de ouvir, sem duplicar dados) — mesmo mecanismo já usado em riff1Tab/riff2Tab.
+  Conferido compasso a compasso com o usuário (a imagem tinha mais linhas/cordas do que pareceu
+  à primeira vista — ver histórico do projeto: errei duas vezes achando que era tudo numa corda só
+  antes de confirmar Ré+Sol fixas o exercício inteiro).
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
