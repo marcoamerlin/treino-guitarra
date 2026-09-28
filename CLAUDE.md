@@ -54,6 +54,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   dia". Depois de salvar, a cópia local de `studentData` é atualizada manualmente (bug real
   encontrado testando: sem isso, trocar de aba de dia e voltar mostrava o plano de antes de
   salvar, porque `studentData` só é buscado 1 vez ao abrir a tela).
+  Também mostra o **andamento** (pedido de usuário, 2026-09-28): `weekBlock()` lista os 7 dias da
+  semana atual (mesma data por dia que `dateFor()` usa na tela do próprio aluno, então bate
+  certinho), com quantos exercícios do plano daquele dia foram marcados `done` em `logs` e a nota
+  (`notes`) que o aluno escreveu, se houver. `progressBlock()` mostra BPM atual de cada exercício
+  já praticado, mais limpos/erros seguidos. Um botão "↻ Atualizar" refaz o fetch (os dados são só
+  uma foto de quando a tela abriu, não atualizam sozinhos).
 - `js/voice-command.js`: comando de voz para marcar Limpo/Errei sem largar a guitarra (pedido de
   usuário real, 2026-09-24). Usa a Web Speech API do navegador — precisa de internet (roda na nuvem
   do Google) e pode disputar com o som do amplificador. parseCommand() é pura/testável; o resto só

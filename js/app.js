@@ -610,11 +610,38 @@ function studentPlanView(student) {
   let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
   let items = [];
 
+  // Dias concluídos (do quanto tinha no plano daquele dia) + observações do aluno, na semana
+  // atual — usa a mesma data por dia da semana que o app do aluno usa (dateFor), então bate com
+  // o que ele vê na própria tela.
+  function weekBlock() {
+    const box = el('div');
+    box.innerHTML = '<div class="sub">Semana atual</div>';
+    const list = el('div');
+    WEEK.forEach((day) => {
+      const dateObj = dateFor(day.weekday);
+      const dateStr = isoDate(dateObj);
+      const log = (studentData.logs && studentData.logs[`${dateStr}_${day.key}`]) || null;
+      const custom = studentData.plans && studentData.plans[day.key];
+      const planItems = (custom && Array.isArray(custom.items) ? custom.items : day.plan)
+        .filter((item) => EXERCISES[item.ex]);
+      const doneCount = log ? planItems.filter((item) => log.done && log.done[item.ex]).length : 0;
+      const allDone = planItems.length > 0 && doneCount === planItems.length;
+      const row = el('div', 'bank-item');
+      row.innerHTML =
+        `<div class="bi-title">${day.label} · ${shortDate(dateObj)}${dateStr === todayISO ? ' (hoje)' : ''}</div>` +
+        `<div class="bi-meta">${doneCount}/${planItems.length} concluídos${allDone ? ' · tudo feito ✓' : ''}</div>` +
+        (log && log.notes ? `<div class="bi-sub">“${log.notes}”</div>` : '');
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+    return box;
+  }
+
   function progressBlock() {
     const box = el('div');
     const speeds = (studentData && studentData.speeds) || {};
     const ids = Object.keys(speeds);
-    box.innerHTML = '<div class="sub">Progresso (velocidade por exercício)</div>';
+    box.innerHTML = '<div class="sub" style="margin-top:16px">Velocidade por exercício</div>';
     if (!ids.length) {
       box.appendChild(el('p', 'tip', 'O aluno ainda não registrou nenhuma velocidade.'));
       return box;
@@ -622,8 +649,9 @@ function studentPlanView(student) {
     const list = el('div', 'chip-row');
     ids.forEach((id) => {
       const ex = EXERCISES[id];
-      const label = `${ex ? ex.title : id} · ${speeds[id].bpm} BPM`;
-      list.appendChild(el('span', 'chip', label));
+      const speed = speeds[id];
+      const streak = speed.clean ? ` · ${speed.clean} limpo(s) seguido(s)` : speed.errors ? ` · ${speed.errors} erro(s) seguido(s)` : '';
+      list.appendChild(el('span', 'chip', `${ex ? ex.title : id} · ${speed.bpm} BPM${streak}`));
     });
     box.appendChild(list);
     return box;
@@ -787,19 +815,27 @@ function studentPlanView(student) {
     body.appendChild(actions);
   }
 
-  teacher.fetchStudentData(student.student_id).then((result) => {
-    studentData = (result && result.data) || { logs: {}, speeds: {}, plans: {} };
-    root.innerHTML =
-      `<h2>${student.student_email}</h2>` +
-      '<div class="progress-block"></div>' +
-      '<div class="sub" style="margin-top:16px">Planejar a semana</div>' +
-      '<div class="student-plan-body"></div>';
-    root.querySelector('.progress-block').appendChild(progressBlock());
-    loadDay();
-  }).catch((error) => {
-    root.innerHTML = `<h2>${student.student_email}</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`;
-  });
+  function loadAll() {
+    root.innerHTML = `<h2>${student.student_email}</h2><div class="sub">Carregando dados do aluno…</div>`;
+    teacher.fetchStudentData(student.student_id).then((result) => {
+      studentData = (result && result.data) || { logs: {}, speeds: {}, plans: {} };
+      root.innerHTML =
+        `<h2>${student.student_email}</h2>` +
+        '<div class="day-actions"><button class="action" data-refresh>↻ Atualizar</button></div>' +
+        '<div class="week-block"></div>' +
+        '<div class="progress-block"></div>' +
+        '<div class="sub" style="margin-top:16px">Planejar a semana</div>' +
+        '<div class="student-plan-body"></div>';
+      root.querySelector('[data-refresh]').addEventListener('click', loadAll);
+      root.querySelector('.week-block').appendChild(weekBlock());
+      root.querySelector('.progress-block').appendChild(progressBlock());
+      loadDay();
+    }).catch((error) => {
+      root.innerHTML = `<h2>${student.student_email}</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`;
+    });
+  }
 
+  loadAll();
   return root;
 }
 
