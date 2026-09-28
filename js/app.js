@@ -726,6 +726,10 @@ function studentPlanView(student) {
       save.disabled = true;
       try {
         await teacher.writeStudentPlan(student.student_id, dayKey, items);
+        // Atualiza a cópia local: sem isso, trocar de dia e voltar recarregava o plano antigo
+        // (de antes de salvar), porque loadDay() lê de studentData, buscado só 1 vez ao abrir.
+        studentData.plans = studentData.plans || {};
+        studentData.plans[dayKey] = { items: items.map((item) => ({ ...item })), updatedAt: Date.now() };
         toast(`Plano de ${WEEK.find((d) => d.key === dayKey).label} salvo.`);
       } catch (error) {
         window.alert(error.message || String(error));
