@@ -47,6 +47,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   dois. Continua precisando criar a conta de cada pessoa à mão no painel (cadastro público
   desligado); o código só cria o vínculo, não a conta. Teste: `tests/teacher.test.mjs`, com um
   Supabase de mentira no mesmo espírito de `tests/sync.test.mjs`.
+  Todo item que o professor salva vira `locked: true` (pedido de usuário, 2026-09-29): o aluno
+  pode reordenar e ajustar tempo/BPM de um exercício travado, mas não remover nem trocar — só os
+  que ele mesmo adicionar depois (sem essa marca) ficam livres. `exerciseCard()` em app.js esconde
+  os botões Trocar/Remover nesse caso (mostra "🎓 Definido pelo professor" no lugar) e o botão
+  "Restaurar plano padrão" fica desabilitado se o dia tiver algum item travado — senão seria uma
+  forma disfarçada de apagar o que o professor montou.
   UI: dentro da folha "Conta e sincronização" (`teacherSectionView()`/`studentPlanView()` em
   app.js) — o editor de plano do aluno é uma versão simplificada do "Editar dia" pessoal (sem
   timer/áudio/comando de voz), com minutos e BPM editáveis por exercício; o BPM grava na hora

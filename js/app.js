@@ -1235,16 +1235,16 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
   const tkey = timerKey(dateStr, day.key, item.ex);
   const updateDuration = () => {
     const durationEl = meta.querySelector('.duration');
-    const base = `${item.min} min · ${CATEGORIES[ex.cat]}`;
+    let html = `${item.min} min · ${CATEGORIES[ex.cat]}`;
+    if (item.locked) html += ' · <span class="teacher-tag">🎓 professor</span>';
     const elapsed = practiceTimer.getElapsed(tkey);
     if (elapsed > 0) {
       const remaining = item.min * 60 - elapsed;
       const over = remaining < 0;
       const running = practiceTimer.isRunning(tkey);
-      durationEl.innerHTML = `${base} · <span class="timer-chip${over ? ' over' : ''}${running ? ' running' : ''}">${over ? '+' : ''}${formatClock(remaining)}</span>`;
-    } else {
-      durationEl.textContent = base;
+      html += ` · <span class="timer-chip${over ? ' over' : ''}${running ? ' running' : ''}">${over ? '+' : ''}${formatClock(remaining)}</span>`;
     }
+    durationEl.innerHTML = html;
   };
   pageRedrawers.push(updateDuration);
   updateDuration();
@@ -1261,8 +1261,9 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
       '<button data-act="plus" aria-label="Mais 5 minutos">+5</button>' +
       `<button data-act="up" aria-label="Subir"${index === 0 ? ' disabled' : ''}>↑</button>` +
       `<button data-act="down" aria-label="Descer"${index === plan.length - 1 ? ' disabled' : ''}>↓</button>` +
-      '<button data-act="swap">Trocar</button>' +
-      '<button data-act="remove" class="danger">Remover</button>');
+      (item.locked
+        ? '<span class="locked-note">🎓 Definido pelo professor</span>'
+        : '<button data-act="swap">Trocar</button><button data-act="remove" class="danger">Remover</button>'));
     row.querySelector('.mins-input').addEventListener('change', (e) => {
       const raw = e.target.value.trim();
       const typed = Math.round(Number(raw));
@@ -1374,6 +1375,7 @@ function renderDay() {
   const total = plan.reduce((sum, item) => sum + item.min, 0);
   const drafts = plan.filter((item) => EXERCISES[item.ex].draft).length;
   const custom = store.isCustomPlan(day.key);
+  const hasLocked = plan.some((item) => item.locked);
 
   const container = $('#dayContent');
   container.innerHTML = '';
@@ -1408,12 +1410,17 @@ function renderDay() {
     actions.appendChild(add);
     if (custom) {
       const reset = el('button', 'action', 'Restaurar plano padrão');
-      reset.addEventListener('click', () => {
-        if (window.confirm(`Voltar ${day.name} ao plano padrão? Suas mudanças neste dia serão perdidas.`)) {
-          store.resetPlan(day.key);
-          render();
-        }
-      });
+      if (hasLocked) {
+        reset.disabled = true;
+        reset.title = 'Este dia tem exercícios definidos pelo professor — peça a ele pra ajustar.';
+      } else {
+        reset.addEventListener('click', () => {
+          if (window.confirm(`Voltar ${day.name} ao plano padrão? Suas mudanças neste dia serão perdidas.`)) {
+            store.resetPlan(day.key);
+            render();
+          }
+        });
+      }
       actions.appendChild(reset);
     }
   }

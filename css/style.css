@@ -296,6 +296,8 @@ header.faceplate::before {
 .timer-chip { font-family: var(--font-mono); color: var(--lcd-text); }
 .timer-chip.over { color: var(--led-red); }
 .timer-chip.running::before { content: '● '; color: var(--led-green); }
+.teacher-tag { color: var(--brass); }
+.locked-note { font-size: 12px; color: var(--text-faint); font-style: italic; padding: 0 2px; }
 
 /* ---- Velocidade e metrônomo ---- */
 .bpm-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; }

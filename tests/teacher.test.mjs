@@ -130,11 +130,11 @@ test('fetchStudentData: null quando o aluno nunca sincronizou', async () => {
   assert.equal(await fetchStudentData(client, 's1'), null);
 });
 
-test('writeStudentPlan: cria a linha do aluno se ele nunca sincronizou', async () => {
+test('writeStudentPlan: cria a linha do aluno se ele nunca sincronizou, marcando os itens como locked', async () => {
   const { client, db } = makeServer();
   await writeStudentPlan(client, 's1', 'seg', [{ ex: 'chroma', min: 10 }]);
   assert.equal(db.user_data[0].rev, 1);
-  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 10 }]);
+  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 10, locked: true }]);
 });
 
 test('writeStudentPlan: troca só o dia editado, sem mexer em logs/speeds nem noutros dias', async () => {
@@ -151,7 +151,7 @@ test('writeStudentPlan: troca só o dia editado, sem mexer em logs/speeds nem no
   await writeStudentPlan(client, 's1', 'seg', [{ ex: 'seq4', min: 8 }]);
   const row = db.user_data[0];
   assert.equal(row.rev, 4);
-  assert.deepEqual(row.data.plans.seg.items, [{ ex: 'seq4', min: 8 }]);
+  assert.deepEqual(row.data.plans.seg.items, [{ ex: 'seq4', min: 8, locked: true }]);
   assert.deepEqual(row.data.plans.ter.items, [{ ex: 'leg_1', min: 8 }]); // dia intocado
   assert.deepEqual(row.data.logs['2026-09-28_seg'].done, { chroma: true }); // log intocado
   assert.equal(row.data.speeds.chroma.bpm, 80); // velocidade intocada
@@ -188,7 +188,7 @@ test('writeStudentPlan: se o aluno grava no meio da rodada, refaz e não perde a
   void server;
   await writeStudentPlan(client, 's1', 'seg', [{ ex: 'chroma', min: 5 }]);
   assert.equal(db.user_data[0].rev, 3); // 1 -> (conflito, rev virou 2 por fora) -> refaz -> 3
-  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 5 }]);
+  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 5, locked: true }]);
 });
 
 test('writeStudentSpeed: cria a linha do aluno (nunca sincronizou) a partir do bpm inicial do exercício', async () => {

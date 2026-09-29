@@ -88,13 +88,17 @@ export async function fetchStudentData(client, studentId) {
 
 // Professor grava o plano de um dia do aluno, sem tocar em logs/speeds nem nos outros dias —
 // controle otimista igual ao sync-core.js (lê, aplica só essa chave, grava se rev não mudou).
+// Todo item salvo aqui vira locked: true (pedido do usuário, 2026-09-29) — o aluno pode reordenar
+// e ajustar tempo/BPM, mas não remover nem trocar um exercício que o professor definiu; só os que
+// ele mesmo adicionar depois (sem essa marca) ficam livres pra remover/trocar. Ver exerciseCard em
+// app.js.
 export async function writeStudentPlan(client, studentId, dayKey, items) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { data: row, error } = await client
       .from('user_data').select('data, rev').eq('user_id', studentId).maybeSingle();
     if (error) throw error;
 
-    const plan = { items: items.map((item) => ({ ...item })), updatedAt: Date.now() };
+    const plan = { items: items.map((item) => ({ ...item, locked: true })), updatedAt: Date.now() };
     if (!row) {
       const fresh = { logs: {}, speeds: {}, plans: { [dayKey]: plan } };
       const { error: insertError } = await client
