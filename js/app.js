@@ -803,7 +803,7 @@ function studentPlanView(student) {
         `<div class="bi-meta">${ex ? CATEGORIES[ex.cat] : ''}</div>` +
         '<div class="day-actions" style="margin-top:8px">' +
           '<button class="action" data-minus-min>−5 min</button>' +
-          `<span class="mins">${item.min} min</span>` +
+          `<input class="mins-input" type="number" inputmode="numeric" min="5" max="90" value="${item.min}" aria-label="Minutos">` +
           '<button class="action" data-plus-min>+5 min</button>' +
           `<button class="action" data-up${i === 0 ? ' disabled' : ''}>↑</button>` +
           `<button class="action" data-down${i === items.length - 1 ? ' disabled' : ''}>↓</button>` +
@@ -815,6 +815,12 @@ function studentPlanView(student) {
       });
       row.querySelector('[data-plus-min]').addEventListener('click', () => {
         item.min = Math.min(90, item.min + 5);
+        drawPlan();
+      });
+      row.querySelector('.mins-input').addEventListener('change', (e) => {
+        const raw = e.target.value.trim();
+        const typed = Math.round(Number(raw));
+        item.min = raw !== '' && Number.isFinite(typed) ? Math.min(90, Math.max(5, typed)) : item.min;
         drawPlan();
       });
       row.querySelector('[data-up]').addEventListener('click', () => {
@@ -836,30 +842,38 @@ function studentPlanView(student) {
       // igual à régua +/- do próprio exercício — é um dado à parte (speeds), não do plano.
       if (ex && ex.bpm) {
         const step = ex.bpm.step || 4;
-        const current = (studentData.speeds && studentData.speeds[item.ex] && studentData.speeds[item.ex].bpm)
+        const currentBpm = () => (studentData.speeds && studentData.speeds[item.ex] && studentData.speeds[item.ex].bpm)
           || ex.bpm.start;
         const bpmRow = el('div', 'day-actions', '');
         bpmRow.innerHTML =
           `<button class="action" data-bpm="${-step}">−${step} BPM</button>` +
-          `<span class="mins" data-bpm-val>${current} BPM</span>` +
+          `<input class="mins-input" type="number" inputmode="numeric" value="${currentBpm()}" aria-label="BPM">` +
           `<button class="action" data-bpm="${step}">+${step} BPM</button>`;
-        const valEl = bpmRow.querySelector('[data-bpm-val]');
+        const valEl = bpmRow.querySelector('.mins-input');
+        const commitDelta = async (delta) => {
+          bpmRow.querySelectorAll('button, input').forEach((el2) => { el2.disabled = true; });
+          try {
+            const bpm = await teacher.writeStudentSpeed(
+              student.student_id, item.ex, delta, ex.bpm.start, todayISO,
+            );
+            studentData.speeds = studentData.speeds || {};
+            studentData.speeds[item.ex] = { ...(studentData.speeds[item.ex] || {}), bpm, clean: 0, errors: 0 };
+            valEl.value = bpm;
+          } catch (error) {
+            window.alert(error.message || String(error));
+            valEl.value = currentBpm();
+          } finally {
+            bpmRow.querySelectorAll('button, input').forEach((el2) => { el2.disabled = false; });
+          }
+        };
         bpmRow.querySelectorAll('[data-bpm]').forEach((btn) => {
-          btn.addEventListener('click', async () => {
-            bpmRow.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-            try {
-              const bpm = await teacher.writeStudentSpeed(
-                student.student_id, item.ex, Number(btn.dataset.bpm), ex.bpm.start, todayISO,
-              );
-              studentData.speeds = studentData.speeds || {};
-              studentData.speeds[item.ex] = { ...(studentData.speeds[item.ex] || {}), bpm, clean: 0, errors: 0 };
-              valEl.textContent = `${bpm} BPM`;
-            } catch (error) {
-              window.alert(error.message || String(error));
-            } finally {
-              bpmRow.querySelectorAll('button').forEach((b) => { b.disabled = false; });
-            }
-          });
+          btn.addEventListener('click', () => commitDelta(Number(btn.dataset.bpm)));
+        });
+        valEl.addEventListener('change', (e) => {
+          const raw = e.target.value.trim();
+          const typed = Math.round(Number(raw));
+          if (raw === '' || !Number.isFinite(typed) || typed === currentBpm()) { valEl.value = currentBpm(); return; }
+          commitDelta(typed - currentBpm());
         });
         row.appendChild(bpmRow);
       }
@@ -967,7 +981,7 @@ function speedBox(id, ex) {
     `<div class="label-row"><span>VELOCIDADE ATUAL</span><span>meta ${cfg.goal} BPM</span></div>` +
     '<div class="bpm-readout">' +
       `<button class="bpm-btn" data-delta="${-step}" aria-label="Diminuir ${step} BPM">−</button>` +
-      '<div class="bpm-lcd"><div class="num"></div><div class="unit">BPM</div></div>' +
+      '<div class="bpm-lcd"><input class="num" type="number" inputmode="numeric" aria-label="BPM"><div class="unit">BPM</div></div>' +
       `<button class="bpm-btn" data-delta="${step}" aria-label="Aumentar ${step} BPM">+</button>` +
     '</div>' +
     '<div class="run-row">' +
@@ -994,7 +1008,7 @@ function speedBox(id, ex) {
 
   const update = () => {
     const speed = store.getSpeed(id, cfg);
-    box.querySelector('.num').textContent = speed.bpm;
+    box.querySelector('.num').value = speed.bpm;
     box.querySelector('.ok small').textContent = `${speed.clean}/3`;
     box.querySelector('.bad small').textContent = `${speed.errors}/2`;
     box.querySelector('[data-metro]').classList.toggle('on', metronome.running);
@@ -1028,6 +1042,16 @@ function speedBox(id, ex) {
       holder.textContent = 'O histórico de velocidade aparece aqui conforme você evolui.';
     }
   };
+
+  box.querySelector('.num').addEventListener('change', (e) => {
+    const raw = e.target.value.trim();
+    const typed = Math.round(Number(raw));
+    const speed = store.getSpeed(id, cfg);
+    if (raw === '' || !Number.isFinite(typed) || typed === speed.bpm) { update(); return; }
+    store.adjustSpeed(id, cfg, typed - speed.bpm, todayISO);
+    if (metronome.running) metronome.setBpm(store.getSpeed(id, cfg).bpm);
+    pageRedrawers.forEach((fn) => fn());
+  });
 
   box.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
@@ -1233,12 +1257,18 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
   if (editing) {
     const row = el('div', 'edit-row',
       '<button data-act="minus" aria-label="Menos 5 minutos">−5</button>' +
-      `<span class="mins">${item.min} min</span>` +
+      `<input class="mins-input" type="number" inputmode="numeric" min="5" max="90" value="${item.min}" aria-label="Minutos">` +
       '<button data-act="plus" aria-label="Mais 5 minutos">+5</button>' +
       `<button data-act="up" aria-label="Subir"${index === 0 ? ' disabled' : ''}>↑</button>` +
       `<button data-act="down" aria-label="Descer"${index === plan.length - 1 ? ' disabled' : ''}>↓</button>` +
       '<button data-act="swap">Trocar</button>' +
       '<button data-act="remove" class="danger">Remover</button>');
+    row.querySelector('.mins-input').addEventListener('change', (e) => {
+      const raw = e.target.value.trim();
+      const typed = Math.round(Number(raw));
+      const val = raw !== '' && Number.isFinite(typed) ? Math.min(90, Math.max(5, typed)) : item.min;
+      updatePlan(day, (items) => { items[index].min = val; });
+    });
     row.addEventListener('click', (e) => {
       const act = e.target.closest('button')?.dataset.act;
       if (!act) return;

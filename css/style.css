@@ -321,7 +321,14 @@ header.faceplate::before {
   min-width: 96px;
   text-align: center;
 }
-.bpm-lcd .num { font-family: var(--font-mono); font-size: 28px; font-weight: 600; color: var(--lcd-text); line-height: 1; }
+.bpm-lcd .num {
+  display: block; width: 100%;
+  font-family: var(--font-mono); font-size: 28px; font-weight: 600; color: var(--lcd-text);
+  line-height: 1; text-align: center;
+  background: none; border: none; padding: 0;
+  -moz-appearance: textfield;
+}
+.bpm-lcd .num::-webkit-outer-spin-button, .bpm-lcd .num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .bpm-lcd .unit { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); margin-top: 3px; letter-spacing: 0.5px; }
 
 .code-lcd {
@@ -403,7 +410,18 @@ header.faceplate::before {
 }
 .edit-row button:disabled { opacity: 0.35; }
 .edit-row .danger { color: #D9776F; border-color: #7A3833; }
-.edit-row .mins { font-family: var(--font-mono); font-size: 12.5px; color: var(--lcd-text); min-width: 52px; text-align: center; }
+.mins-input {
+  min-height: 40px; min-width: 60px;
+  padding: 0 6px;
+  background: var(--lcd-bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--lcd-text);
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.mins-input::-webkit-outer-spin-button, .mins-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mins-input:disabled { opacity: 0.5; }
 
 .day-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 6px; }
 .action {
