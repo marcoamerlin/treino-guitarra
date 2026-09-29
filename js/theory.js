@@ -78,3 +78,70 @@ export function positionsOf(rootPc, scaleKey) {
     end: start + (i + 1 < bounds.length ? bounds[i + 1] : bounds[0] + 12),
   }));
 }
+
+// Nome e cifra (tétrade) de cada grau do campo harmônico maior — fixos, não dependem da tônica
+// escolhida (pedido de usuário, 2026-09-29, baseado num material de referência do Instituto
+// Magno). Índice 0 = 1º grau (Jônio) ... 6 = 7º grau (Lócrio).
+export const MODE_NAMES = ['Jônio', 'Dórico', 'Frígio', 'Lídio', 'Mixolídio', 'Eólio', 'Lócrio'];
+export const MODE_CHORDS = ['7M', 'm7', 'm7', '7M', '7', 'm7', 'm7(b5)'];
+
+// As 7 posições dos modos do campo harmônico maior, em "3 notas por corda" — diferente de
+// positionsOf() (uma janela de casas comum às 6 cordas, boa pra pentatônica: com 7 notas a janela
+// fica curta demais, ver hasPositions()). Aqui cada corda tem seu próprio trecho de casas, do
+// jeito que se ensina modo na prática: o braço inteiro dividido em 7 caixas que se conectam, uma
+// por grau. Cordas processadas da mais grave pra mais aguda (a lógica é "sobe a escala nota por
+// nota, sempre para a casa mais próxima acima da anterior"), resultado guardado na ordem de
+// STRING_NAMES (e primeiro). Conferido por computador contra o material de referência antes de
+// entrar no explorador — nunca calcular posição de modo de cabeça.
+export function modePositions(rootPc) {
+  const { intervals } = SCALES.major;
+  const nextDegree = (relative) => intervals[(intervals.indexOf(relative) + 1) % intervals.length];
+  const order = [5, 4, 3, 2, 1, 0]; // E, A, D, G, B, e — grave para aguda
+
+  const findFret = (stringIdx, minFret, wantRelative) => {
+    for (let f = minFret; f <= minFret + 4; f++) {
+      const relative = ((OPEN_PC[stringIdx] + f - rootPc) % 12 + 12) % 12;
+      if (relative === wantRelative) return f;
+    }
+    throw new Error(`modePositions: não achei o grau ${wantRelative} a partir da casa ${minFret}`);
+  };
+
+  const positions = [];
+  let startFret = anchorFret(rootPc);
+  let degreeRelative = 0;
+
+  for (let m = 0; m < 7; m++) {
+    const dots = [];
+    let lastRelative = null;
+    let cursorFret = startFret;
+    order.forEach((stringIdx) => {
+      const fretsHere = [];
+      for (let n = 0; n < 3; n++) {
+        const wantRelative = lastRelative === null ? degreeRelative : nextDegree(lastRelative);
+        const searchFrom = n === 0 ? cursorFret : fretsHere[fretsHere.length - 1];
+        const fret = findFret(stringIdx, searchFrom, wantRelative);
+        fretsHere.push(fret);
+        lastRelative = wantRelative;
+      }
+      cursorFret = fretsHere[0];
+      fretsHere.forEach((fret) => {
+        const pc = (OPEN_PC[stringIdx] + fret) % 12;
+        const relative = ((pc - rootPc) % 12 + 12) % 12;
+        dots.push({ string: stringIdx, fret, pc, relative, root: relative === degreeRelative, name: noteName(pc) });
+      });
+    });
+    const frets = dots.map((d) => d.fret);
+    positions.push({
+      index: m + 1,
+      name: MODE_NAMES[m],
+      chordSuffix: MODE_CHORDS[m],
+      rootPc: (rootPc + degreeRelative) % 12,
+      start: Math.min(...frets),
+      end: Math.max(...frets),
+      dots,
+    });
+    degreeRelative = nextDegree(degreeRelative);
+    startFret = findFret(5, startFret, degreeRelative);
+  }
+  return positions;
+}

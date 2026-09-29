@@ -163,12 +163,23 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
   Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
-  5 posições clássicas (positionsOf, casas conectadas: fim de uma = início da próxima); escalas de
-  7 notas só mostram o braço inteiro (janela entre graus fica curta demais para virar posição). Uma
-  posição de cada vez, não as 5 sobrepostas: paleta categórica para 5+ grupos não passou no
-  validador do skill dataviz para pontos que podem ficar lado a lado (mesmo motivo de referências
-  do mercado mostrarem uma caixa por vez). Raiz destacada por anel, não por cor (funciona para
-  qualquer visão). SVG do braço precisa de width/height além do viewBox, senão fica 0×0.
+  5 posições clássicas (`positionsOf`, uma janela de casas comum às 6 cordas, casas conectadas: fim
+  de uma = início da próxima); menor natural só mostra o braço inteiro (janela entre graus vizinhos
+  fica curta demais pra virar posição com essa técnica de janela única). Maior é diferente: em vez
+  de janela comum, usa `modePositions` — os 7 modos do campo harmônico (Jônio a Lócrio), cada um
+  com seu próprio recorte por corda ("3 notas por corda", como se ensina modo na prática, e não
+  "achar tudo que cai numa faixa de casas"), pedido de usuário em 2026-09-29 a partir de um
+  material de referência do Instituto Magno ("Modos Gregos — Campo Harmônico de G"). Cada posição
+  mostra o nome do modo e a cifra (7M/m7/m7/7M/7/m7/m7(b5), fixas pra qualquer tônica — conferidas
+  batendo exatamente com o material de referência, forte confirmação independente já que o campo
+  harmônico só depende da escala); em "Todas" mostra o campo harmônico inteiro (os 7 acordes) na
+  linha onde normalmente ficam os graus. Nunca calcular posição de modo de cabeça — `modePositions`
+  deriva por computador (mesmo princípio de `tools/derive-chord-shapes.mjs` pros acordes CAGED);
+  testado casa por casa contra Sol maior em `tests/theory.test.mjs`. Uma posição de cada vez, não
+  todas sobrepostas: paleta categórica para 5+ grupos não passou no validador do skill dataviz para
+  pontos que podem ficar lado a lado (mesmo motivo de referências do mercado mostrarem uma caixa
+  por vez). Raiz/tônica destacada por anel, não por cor (funciona para qualquer visão). SVG do
+  braço precisa de width/height além do viewBox, senão fica 0×0.
   Acordes: sistema CAGED, 5 formas móveis (E A D C G), cada uma nasce de um acorde aberto real
   (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
   — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar

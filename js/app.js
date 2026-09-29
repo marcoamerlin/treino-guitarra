@@ -7,7 +7,7 @@ import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
-import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, fretboardNotes, fretboardIntervals } from './theory.js';
+import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, modePositions, fretboardNotes, fretboardIntervals } from './theory.js';
 import { fretboardSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
@@ -236,15 +236,28 @@ function scaleExplorerView() {
     const rp = store.getPref('scaleRoot', 9);
     const sk = store.getPref('scaleType', 'pentMinor');
     const scale = SCALES[sk];
-    const withPositions = hasPositions(sk);
-    const pos = withPositions ? positionsOf(rp, sk) : [];
+    // Maior tem posições de outro jeito: 7 modos, 3 notas por corda (modePositions), não a janela
+    // comum de positionsOf (que só rende bem em escalas de até 5 notas — ver hasPositions).
+    const isModes = sk === 'major';
+    const withPositions = hasPositions(sk) || isModes;
+    const pos = isModes ? modePositions(rp) : (withPositions ? positionsOf(rp, sk) : []);
     let m = withPositions ? store.getPref('scaleMode', 0) : 0;
     if (m > pos.length) { m = 0; store.setPref('scaleMode', 0); }
 
     root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
     root.querySelectorAll('.scale-row .chip').forEach((c) => c.classList.toggle('on', c.textContent === scale.label));
-    root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label}`;
-    root.querySelector('.scale-degrees').textContent = scale.degrees.join('  ');
+
+    if (isModes && m > 0) {
+      const p = pos[m - 1];
+      root.querySelector('.scale-name').textContent = `${NOTE_NAMES[p.rootPc]} ${p.name}`;
+      root.querySelector('.scale-degrees').textContent = `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`;
+    } else if (isModes) {
+      root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label} — campo harmônico`;
+      root.querySelector('.scale-degrees').textContent = pos.map((p) => `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`).join('  ·  ');
+    } else {
+      root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label}`;
+      root.querySelector('.scale-degrees').textContent = scale.degrees.join('  ');
+    }
 
     const posRow = root.querySelector('.pos-row');
     posRow.innerHTML = '';
@@ -253,7 +266,8 @@ function scaleExplorerView() {
       all.addEventListener('click', () => { store.setPref('scaleMode', 0); draw(); });
       posRow.appendChild(all);
       pos.forEach((p) => {
-        const chip = el('button', `chip${m === p.index ? ' on' : ''}`, String(p.index));
+        const label = isModes ? `${p.index} ${p.name}` : String(p.index);
+        const chip = el('button', `chip${m === p.index ? ' on' : ''}`, label);
         chip.addEventListener('click', () => { store.setPref('scaleMode', p.index); draw(); });
         posRow.appendChild(chip);
       });
@@ -261,13 +275,17 @@ function scaleExplorerView() {
 
     const fretStart = m === 0 ? 0 : Math.max(0, pos[m - 1].start - 1);
     const fretEnd = m === 0 ? 12 : pos[m - 1].end + 1;
-    const notes = fretboardNotes(rp, sk, fretStart, fretEnd);
+    const notes = m === 0 ? fretboardNotes(rp, sk, fretStart, fretEnd) : (isModes ? pos[m - 1].dots : fretboardNotes(rp, sk, fretStart, fretEnd));
     root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart, fretEnd, dots: notes });
 
     root.querySelector('.tip').textContent = withPositions
       ? (m === 0
-        ? 'Toque numa posição (1 a 5) para ver só aquela caixa. A raiz aparece com o anel dourado.'
-        : `Posição ${m} de ${pos.length}: casas ${pos[m - 1].start} a ${pos[m - 1].end}. A última casa desta posição é a primeira da próxima — é por onde elas se conectam no braço.`)
+        ? (isModes
+          ? 'Toque num modo (1 a 7) para ver a caixa dele — são os 7 acordes do campo harmônico. A tônica de cada modo aparece com o anel dourado.'
+          : 'Toque numa posição (1 a 5) para ver só aquela caixa. A raiz aparece com o anel dourado.')
+        : (isModes
+          ? `${pos[m - 1].index}º grau (${pos[m - 1].name}): casas ${pos[m - 1].start} a ${pos[m - 1].end}, 3 notas por corda.`
+          : `Posição ${m} de ${pos.length}: casas ${pos[m - 1].start} a ${pos[m - 1].end}. A última casa desta posição é a primeira da próxima — é por onde elas se conectam no braço.`))
       : 'Escala de 7 notas: aqui só o braço inteiro, sem posições (as janelas entre graus ficam curtas demais para virar uma caixa de mão).';
   }
 

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   NOTE_NAMES, OPEN_PC, SCALES, hasPositions, noteName, fretboardNotes, anchorFret, positionsOf,
-  INTERVAL_NAMES, intervalName, fretboardIntervals,
+  INTERVAL_NAMES, intervalName, fretboardIntervals, modePositions, MODE_NAMES, MODE_CHORDS,
 } from '../js/theory.js';
 
 const PC = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
@@ -139,4 +139,54 @@ test('fretboardIntervals bate com um quadro de intervalos real, casa por casa (7
       assert.ok(overlap, `casa ${fret}, corda ${string}: calculado "${computed}", esperado "${expectedRow[col]}"`);
     });
   });
+});
+
+// Modos do campo harmônico maior (pedido de usuário, 2026-09-29, material de referência do
+// Instituto Magno: "Modos Gregos - Campo Harmônico de G"). Tabela abaixo (Sol maior) conferida
+// por computador antes de entrar no explorador — os acordes batem exatamente com o material de
+// referência (G7M, Am7, Bm7, C7M, D7, Em7, F#m7(b5)), o que confirma independentemente a
+// derivação (o campo harmônico é determinado só pela escala, não por escolha de convenção).
+test('modePositions: campo harmônico de Sol maior bate casa por casa com a referência', () => {
+  const REFERENCE = {
+    // ordem das cordas: e B G D A E (mesma de STRING_NAMES)
+    'G Jônio': [[5, 7, 8], [5, 7, 8], [4, 5, 7], [4, 5, 7], [3, 5, 7], [3, 5, 7]],
+    'A Dórico': [[7, 8, 10], [7, 8, 10], [5, 7, 9], [5, 7, 9], [5, 7, 9], [5, 7, 8]],
+    'B Frígio': [[8, 10, 12], [8, 10, 12], [7, 9, 11], [7, 9, 10], [7, 9, 10], [7, 8, 10]],
+    'C Lídio': [[10, 12, 14], [10, 12, 13], [9, 11, 12], [9, 10, 12], [9, 10, 12], [8, 10, 12]],
+    'D Mixolídio': [[12, 14, 15], [12, 13, 15], [11, 12, 14], [10, 12, 14], [10, 12, 14], [10, 12, 14]],
+    'E Eólio': [[14, 15, 17], [13, 15, 17], [12, 14, 16], [12, 14, 16], [12, 14, 15], [12, 14, 15]],
+    'F# Lócrio': [[15, 17, 19], [15, 17, 19], [14, 16, 17], [14, 16, 17], [14, 15, 17], [14, 15, 17]],
+  };
+  const positions = modePositions(PC.G);
+  assert.equal(positions.length, 7);
+  positions.forEach((p, i) => {
+    const label = `${NOTE_NAMES[p.rootPc]} ${p.name}`;
+    assert.ok(REFERENCE[label], `modo inesperado: ${label}`);
+    for (let s = 0; s < 6; s++) {
+      const frets = p.dots.filter((d) => d.string === s).map((d) => d.fret).sort((a, b) => a - b);
+      assert.deepEqual(frets, REFERENCE[label][s], `${label}, corda índice ${s}: casas`);
+    }
+  });
+});
+
+test('modePositions: as cifras batem com o campo harmônico maior oficial (7M m7 m7 7M 7 m7 m7(b5))', () => {
+  assert.deepEqual(MODE_CHORDS, ['7M', 'm7', 'm7', '7M', '7', 'm7', 'm7(b5)']);
+  assert.equal(MODE_NAMES.length, 7);
+  const positions = modePositions(PC.G);
+  const chords = positions.map((p) => `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`);
+  assert.deepEqual(chords, ['G7M', 'Am7', 'Bm7', 'C7M', 'D7', 'Em7', 'F#m7(b5)']);
+});
+
+test('modePositions: em qualquer tônica, toda nota de toda posição pertence à escala maior, e a tônica de cada modo vem marcada', () => {
+  for (let root = 0; root < 12; root++) {
+    const positions = modePositions(root);
+    positions.forEach((p) => {
+      p.dots.forEach((d) => {
+        assert.ok(SCALES.major.intervals.includes(d.relative), `raiz ${root}, modo ${p.name}: nota fora da escala (relative=${d.relative})`);
+      });
+      const rootDots = p.dots.filter((d) => d.root);
+      assert.ok(rootDots.length > 0, `raiz ${root}, modo ${p.name}: nenhuma nota marcada como tônica`);
+      rootDots.forEach((d) => assert.equal(d.pc, p.rootPc, `raiz ${root}, modo ${p.name}: tônica marcada com pc errado`));
+    });
+  }
 });
