@@ -2,7 +2,7 @@
 // Arquivos do app: rede primeiro (pega atualizações), cache como reserva.
 // Fontes do Google: cache na primeira visita, para aparecerem offline depois.
 
-const CACHE = 'guitarra-v11';
+const CACHE = 'guitarra-v12';
 const SHELL = [
   './',
   'index.html',
@@ -67,8 +67,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin === self.location.origin) {
+    // GitHub Pages manda Cache-Control: max-age=600 nos arquivos do app — um fetch(request) comum
+    // pode devolver uma cópia de até 10 min atrás direto do cache HTTP do navegador, mesmo aqui
+    // pedindo "rede primeiro". 'reload' força ignorar esse cache e ir sempre ao servidor de
+    // verdade (achado testando no app de bateria, 2026-09-28 — mesmo padrão de sw.js aqui, mesmo
+    // bug: atualizações publicadas não chegavam nos aparelhos dentro dessa janela de 10 min).
+    const fresh = new Request(request, { cache: 'reload' });
     event.respondWith(
-      fetch(request)
+      fetch(fresh)
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(request, copy));

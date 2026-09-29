@@ -185,6 +185,15 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   pico≈0,82) e corrigido em 2026-09-23 subindo `gain` nos 4 exercícios de quarta (bends/vibrato):
   bend_1 (1.6→6 / 1.6→5), bend_rel (2.2→11 / 2→10), vibrato (2.2→7), bend_lick (1.6→5 / 1.6→4).
 - Ao adicionar arquivo novo ao app, incluí-lo em `SHELL` no `sw.js` e subir `CACHE`.
+- `sw.js`: achado real testando um deploy do Treino de Bateria (mesmo padrão de `sw.js`, replicado
+  de lá pra cá, 2026-09-28): o GitHub Pages manda `Cache-Control: max-age=600` nos arquivos do
+  app, então um `fetch(request)` comum dentro do service worker podia devolver uma cópia de até
+  10 min atrás mesmo pedindo "rede primeiro" — atualizações publicadas pareciam não chegar nos
+  aparelhos dos usuários. Corrigido criando o request de novo com `{ cache: 'reload' }` (ignora o
+  cache HTTP, vai sempre ao servidor) e registrando o worker com `{ updateViaCache: 'none' }` em
+  `app.js` (senão o `sw.js` em si também podia ficar preso no cache por até 10 min, atrasando o
+  navegador notar que existe versão nova). Mesmo assim, subir `CACHE` a cada deploy continua
+  necessário — é o que faz o service worker antigo ser substituído e o cache velho, apagado.
 
 ## Pendências
 

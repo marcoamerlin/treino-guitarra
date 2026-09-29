@@ -1471,5 +1471,9 @@ updateSyncPill();
 sync.init();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  navigator.serviceWorker.register('./sw.js').catch(() => { /* app funciona sem offline */ });
+  // updateViaCache: 'none' faz o navegador sempre buscar o sw.js de verdade (sem cache HTTP) pra
+  // checar se há versão nova — senão o GitHub Pages (Cache-Control: max-age=600) podia mostrar o
+  // service worker antigo por até 10 min depois de um deploy, atrasando a atualização do app.
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+    .catch(() => { /* app funciona sem offline */ });
 }
