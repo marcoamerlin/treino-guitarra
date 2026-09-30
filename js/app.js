@@ -7,7 +7,7 @@ import { metronome } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
-import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, modePositions, fretboardNotes, fretboardIntervals } from './theory.js';
+import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, modePositions, modeScaleNotes, ptName, fretboardNotes, fretboardIntervals } from './theory.js';
 import { fretboardSVG, sequenceSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
@@ -214,6 +214,8 @@ function scaleExplorerView() {
     '<div class="chip-row root-row"></div>' +
     '<div class="chip-row scale-row"></div>' +
     '<div class="scale-info"><span class="scale-name"></span><span class="scale-degrees"></span></div>' +
+    '<p class="mode-detail"></p>' +
+    '<p class="harmonic-field"></p>' +
     '<div class="chip-row pos-row"></div>' +
     '<div class="fret-scroll"><div class="fret-inner"></div></div>' +
     '<p class="tip"></p>';
@@ -247,17 +249,30 @@ function scaleExplorerView() {
     root.querySelectorAll('.root-row .chip').forEach((c, pc) => c.classList.toggle('on', pc === rp));
     root.querySelectorAll('.scale-row .chip').forEach((c) => c.classList.toggle('on', c.textContent === scale.label));
 
+    const modeDetailEl = root.querySelector('.mode-detail');
+    const harmonicFieldEl = root.querySelector('.harmonic-field');
     if (isModes && m > 0) {
       const p = pos[m - 1];
+      const notes = modeScaleNotes(rp, p.index - 1);
       root.querySelector('.scale-name').textContent = `${NOTE_NAMES[p.rootPc]} ${p.name}`;
       root.querySelector('.scale-degrees').textContent = `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`;
+      modeDetailEl.innerHTML = `${p.index}º grau · <em>${ptName(p.rootPc)} ${p.name}</em> · ${notes.join(' ')}`;
     } else if (isModes) {
       root.querySelector('.scale-name').textContent = `Campo harmônico de ${NOTE_NAMES[rp]} maior`;
-      root.querySelector('.scale-degrees').textContent = pos.map((p) => `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`).join('  ·  ');
+      root.querySelector('.scale-degrees').textContent = '';
+      modeDetailEl.textContent = '';
     } else {
       root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label}`;
       root.querySelector('.scale-degrees').textContent = scale.degrees.join('  ');
+      modeDetailEl.textContent = '';
     }
+    // Campo harmônico inteiro: fica visível o tempo todo em "Modos gregos" (não só na visão
+    // "Todas"), pra sempre dar pra comparar o modo aberto agora com os outros 6 — pedido de
+    // usuário, 2026-09-30, a partir do material de referência (a caixa "Campo harmônico" aparece
+    // em toda página do PDF, não só numa visão resumo).
+    harmonicFieldEl.innerHTML = isModes
+      ? `Campo harmônico: ${pos.map((p) => `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`).join('  ·  ')}`
+      : '';
 
     const posRow = root.querySelector('.pos-row');
     posRow.innerHTML = '';

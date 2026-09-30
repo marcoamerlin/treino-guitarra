@@ -194,6 +194,16 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   de cada corda), então `sequenceSVG` só precisa agrupar notas consecutivas da mesma corda. As 6
   linhas de corda são desenhadas por toda a largura do diagrama (não só embaixo de cada grupo de
   notas) — achado testando: sem isso, os grupos pareciam blocos soltos, sem parecer uma tablatura.
+  As bolinhas de `sequenceSVG` mostram o número da casa (pedido de usuário, 2026-09-30, bate com o
+  material de referência) — a nota já aparece na legenda de texto acima, não precisa repetir bolinha
+  por bolinha como faz `fretboardSVG` (que mostra nome da nota, sem número de casa nenhum).
+  Legenda de cada modo (também pedido de usuário, 2026-09-30, "complementar conforme a imagem"):
+  `.mode-detail` mostra "1º grau · Sol Jônio · G A B C D E F#" — grau (`p.index`), nome em
+  português (`ptName`, PT_NAMES em theory.js: dó-ré-mi, só usado aqui) e as 7 notas do modo
+  relidas a partir da própria tônica (`modeScaleNotes`, gira `SCALES.major.intervals` a partir do
+  grau). `.harmonic-field` mostra os 7 acordes o tempo todo (não só em "Todas"), pra comparar o
+  modo aberto com os outros 6 sem trocar de aba — no material de referência essa caixa aparece em
+  toda página do PDF, fixa, não só numa visão resumo.
   Acordes: sistema CAGED, 5 formas móveis (E A D C G), cada uma nasce de um acorde aberto real
   (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
   — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar

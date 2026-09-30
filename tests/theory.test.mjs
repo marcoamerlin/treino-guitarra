@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   NOTE_NAMES, OPEN_PC, SCALES, hasPositions, noteName, fretboardNotes, anchorFret, positionsOf,
   INTERVAL_NAMES, intervalName, fretboardIntervals, modePositions, MODE_NAMES, MODE_CHORDS,
+  modeScaleNotes, ptName, PT_NAMES,
 } from '../js/theory.js';
 
 const PC = { C: 0, 'C#': 1, D: 2, 'D#': 3, E: 4, F: 5, 'F#': 6, G: 7, 'G#': 8, A: 9, 'A#': 10, B: 11 };
@@ -191,5 +192,27 @@ test('modePositions: em qualquer tônica, toda nota de toda posição pertence �
       assert.ok(rootDots.length > 0, `raiz ${root}, modo ${p.name}: nenhuma nota marcada como tônica`);
       rootDots.forEach((d) => assert.equal(d.pc, p.rootPc, `raiz ${root}, modo ${p.name}: tônica marcada com pc errado`));
     });
+  }
+});
+
+test('ptName: nomes em português (dó-ré-mi), 12 posições, mesma convenção de pitch class', () => {
+  assert.equal(PT_NAMES.length, 12);
+  assert.equal(ptName(PC.C), 'Dó');
+  assert.equal(ptName(PC.G), 'Sol');
+  assert.equal(ptName(PC.B), 'Si');
+  assert.equal(ptName(PC['F#']), 'Fá#');
+});
+
+test('modeScaleNotes: relê as 7 notas da escala a partir de cada grau (mesmas notas, ordem diferente)', () => {
+  assert.deepEqual(modeScaleNotes(PC.G, 0), ['G', 'A', 'B', 'C', 'D', 'E', 'F#']); // G Jônio
+  assert.deepEqual(modeScaleNotes(PC.G, 2), ['B', 'C', 'D', 'E', 'F#', 'G', 'A']); // B Frígio
+  assert.deepEqual(modeScaleNotes(PC.G, 6), ['F#', 'G', 'A', 'B', 'C', 'D', 'E']); // F# Lócrio
+  // qualquer grau: mesmo conjunto de 7 notas, só a ordem/ponto de partida muda
+  for (let root = 0; root < 12; root++) {
+    const base = new Set(modeScaleNotes(root, 0));
+    for (let deg = 1; deg < 7; deg++) {
+      const rotated = new Set(modeScaleNotes(root, deg));
+      assert.deepEqual(rotated, base, `raiz ${root}, grau ${deg}: mudou o conjunto de notas`);
+    }
   }
 });

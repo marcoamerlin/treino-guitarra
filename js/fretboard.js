@@ -105,15 +105,11 @@ export function sequenceSVG(dots) {
     svg += `<text class="fb-stringname" x="${LEFT - 20}" y="${yOf(s) + 4}" text-anchor="middle">${name}</text>`;
   });
   placed.forEach(({ x: cx, y: cy, dot }) => {
-    const parts = dot.name.split('/');
-    const r = dot.root ? 10 : parts.length > 1 ? 11 : 9;
-    svg += `<circle class="fb-dot${dot.root ? ' fb-root' : ''}" cx="${cx}" cy="${cy}" r="${r}"/>`;
-    if (parts.length > 1) {
-      svg += `<text class="fb-note fb-note-sm" x="${cx}" y="${cy - 1}" text-anchor="middle">${parts[0]}</text>`;
-      svg += `<text class="fb-note fb-note-sm" x="${cx}" y="${cy + 8}" text-anchor="middle">${parts[1]}</text>`;
-    } else {
-      svg += `<text class="fb-note" x="${cx}" y="${cy + 4}" text-anchor="middle">${dot.name}</text>`;
-    }
+    // Casa (não nota): pedido de usuário, 2026-09-30 — bate com o material de referência, que
+    // mostra o número do traste em cada bolinha (a nota já aparece na legenda acima, "Sol Jônio
+    // G A B C D E F#", não precisa repetir aqui).
+    svg += `<circle class="fb-dot${dot.root ? ' fb-root' : ''}" cx="${cx}" cy="${cy}" r="10"/>`;
+    svg += `<text class="fb-note" x="${cx}" y="${cy + 4}" text-anchor="middle">${dot.fret}</text>`;
   });
 
   return svg + '</svg>';

@@ -5,6 +5,10 @@
 // tab.js e tab-player.js (chords.js usa a ordem contrária; aqui seguimos a mais comum no projeto).
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+// Nome em português (dó-ré-mi), só pra legenda dos modos — pedido de usuário, 2026-09-30, pra
+// bater com o material de referência ("Sol Jônio", não "G Jônio").
+export const PT_NAMES = ['Dó', 'Dó#', 'Ré', 'Ré#', 'Mi', 'Fá', 'Fá#', 'Sol', 'Sol#', 'Lá', 'Lá#', 'Si'];
+export const ptName = (pc) => PT_NAMES[((pc % 12) + 12) % 12];
 export const STRING_NAMES = ['e', 'B', 'G', 'D', 'A', 'E'];
 export const OPEN_PC = [4, 11, 7, 2, 9, 4]; // pitch class de cada corda solta, mesma ordem de STRING_NAMES
 
@@ -88,6 +92,15 @@ export function positionsOf(rootPc, scaleKey) {
 // Magno). Índice 0 = 1º grau (Jônio) ... 6 = 7º grau (Lócrio).
 export const MODE_NAMES = ['Jônio', 'Dórico', 'Frígio', 'Lídio', 'Mixolídio', 'Eólio', 'Lócrio'];
 export const MODE_CHORDS = ['7M', 'm7', 'm7', '7M', '7', 'm7', 'm7(b5)'];
+
+// As 7 notas da escala maior, "relidas" a partir de um grau — ex.: rootPc=G, modeIndex=0 (Jônio)
+// devolve G A B C D E F#; modeIndex=2 (Frígio, 3º grau) devolve as mesmas 7 notas mas começando
+// em B: B C D E F# G A. modeIndex aqui é 0-based (0=Jônio ... 6=Lócrio).
+export function modeScaleNotes(rootPc, modeIndex) {
+  const { intervals } = SCALES.major;
+  const rotated = [...intervals.slice(modeIndex), ...intervals.slice(0, modeIndex)];
+  return rotated.map((iv) => noteName((rootPc + iv) % 12));
+}
 
 // As 7 posições dos modos do campo harmônico maior, em "3 notas por corda" — diferente de
 // positionsOf() (uma janela de casas comum às 6 cordas, boa pra pentatônica: com 7 notas a janela
