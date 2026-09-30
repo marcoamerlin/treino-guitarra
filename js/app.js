@@ -238,7 +238,7 @@ function scaleExplorerView() {
     const scale = SCALES[sk];
     // Maior tem posições de outro jeito: 7 modos, 3 notas por corda (modePositions), não a janela
     // comum de positionsOf (que só rende bem em escalas de até 5 notas — ver hasPositions).
-    const isModes = sk === 'major';
+    const isModes = sk === 'modes';
     const withPositions = hasPositions(sk) || isModes;
     const pos = isModes ? modePositions(rp) : (withPositions ? positionsOf(rp, sk) : []);
     let m = withPositions ? store.getPref('scaleMode', 0) : 0;
@@ -252,7 +252,7 @@ function scaleExplorerView() {
       root.querySelector('.scale-name').textContent = `${NOTE_NAMES[p.rootPc]} ${p.name}`;
       root.querySelector('.scale-degrees').textContent = `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`;
     } else if (isModes) {
-      root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label} — campo harmônico`;
+      root.querySelector('.scale-name').textContent = `Campo harmônico de ${NOTE_NAMES[rp]} maior`;
       root.querySelector('.scale-degrees').textContent = pos.map((p) => `${NOTE_NAMES[p.rootPc]}${p.chordSuffix}`).join('  ·  ');
     } else {
       root.querySelector('.scale-name').textContent = `${NOTE_NAMES[rp]} ${scale.label}`;

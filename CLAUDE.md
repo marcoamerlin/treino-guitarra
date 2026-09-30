@@ -162,24 +162,28 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   por engano. Pego antes de publicar, rodando os testes.
 - `js/theory.js` + `js/fretboard.js` + `js/chord-shapes.js`: explorador de escalas e acordes (botão
   "Braço" no cabeçalho, tela cheia, com abas Escalas/Acordes).
-  Raiz (12 notas) + escala (maior/menor/pentatônica maior/menor) + posição. Pentatônicas ganham as
-  5 posições clássicas (`positionsOf`, uma janela de casas comum às 6 cordas, casas conectadas: fim
-  de uma = início da próxima); menor natural só mostra o braço inteiro (janela entre graus vizinhos
-  fica curta demais pra virar posição com essa técnica de janela única). Maior é diferente: em vez
-  de janela comum, usa `modePositions` — os 7 modos do campo harmônico (Jônio a Lócrio), cada um
-  com seu próprio recorte por corda ("3 notas por corda", como se ensina modo na prática, e não
-  "achar tudo que cai numa faixa de casas"), pedido de usuário em 2026-09-29 a partir de um
-  material de referência do Instituto Magno ("Modos Gregos — Campo Harmônico de G"). Cada posição
-  mostra o nome do modo e a cifra (7M/m7/m7/7M/7/m7/m7(b5), fixas pra qualquer tônica — conferidas
-  batendo exatamente com o material de referência, forte confirmação independente já que o campo
-  harmônico só depende da escala); em "Todas" mostra o campo harmônico inteiro (os 7 acordes) na
-  linha onde normalmente ficam os graus. Nunca calcular posição de modo de cabeça — `modePositions`
-  deriva por computador (mesmo princípio de `tools/derive-chord-shapes.mjs` pros acordes CAGED);
-  testado casa por casa contra Sol maior em `tests/theory.test.mjs`. Uma posição de cada vez, não
-  todas sobrepostas: paleta categórica para 5+ grupos não passou no validador do skill dataviz para
-  pontos que podem ficar lado a lado (mesmo motivo de referências do mercado mostrarem uma caixa
-  por vez). Raiz/tônica destacada por anel, não por cor (funciona para qualquer visão). SVG do
-  braço precisa de width/height além do viewBox, senão fica 0×0.
+  Raiz (12 notas) + escala (maior/menor natural/pentatônica maior/pentatônica menor/modos gregos)
+  + posição. Pentatônicas ganham as 5 posições clássicas (`positionsOf`, uma janela de casas comum
+  às 6 cordas, casas conectadas: fim de uma = início da próxima); maior e menor natural só mostram
+  o braço inteiro, sem posição (janela entre graus vizinhos fica curta demais pra virar posição com
+  essa técnica de janela única).
+  "Modos gregos" é uma escala separada (mesma nota-a-nota da maior, `SCALES.modes`, mas com seu
+  próprio item na lista — pedido de usuário, 2026-09-30: a primeira versão reaproveitou a própria
+  "Maior" pra mostrar os modos, e isso fez a visão simples de sempre sumir; agora as duas convivem)
+  que usa um jeito de posição bem diferente do `positionsOf`: `modePositions` — os 7 modos do campo
+  harmônico (Jônio a Lócrio), cada um com seu próprio recorte por corda ("3 notas por corda", como
+  se ensina modo na prática, e não "achar tudo que cai numa faixa de casas"), a partir de um
+  material de referência do Instituto Magno ("Modos Gregos — Campo Harmônico de G", 2026-09-29).
+  Cada posição mostra o nome do modo e a cifra (7M/m7/m7/7M/7/m7/m7(b5), fixas pra qualquer tônica
+  — conferidas batendo exatamente com o material de referência, forte confirmação independente já
+  que o campo harmônico só depende da escala); em "Todas" mostra o campo harmônico inteiro (os 7
+  acordes) na linha onde normalmente ficam os graus. Nunca calcular posição de modo de cabeça —
+  `modePositions` deriva por computador (mesmo princípio de `tools/derive-chord-shapes.mjs` pros
+  acordes CAGED); testado casa por casa contra Sol maior em `tests/theory.test.mjs`. Uma posição de
+  cada vez, não todas sobrepostas: paleta categórica para 5+ grupos não passou no validador do
+  skill dataviz para pontos que podem ficar lado a lado (mesmo motivo de referências do mercado
+  mostrarem uma caixa por vez). Raiz/tônica destacada por anel, não por cor (funciona para qualquer
+  visão). SVG do braço precisa de width/height além do viewBox, senão fica 0×0.
   Posição de modo usa um desenho diferente do resto do explorador: `sequenceSVG` (fretboard.js), no
   lugar de `fretboardSVG` (usado em "Todas", pentatônica e acordes). Pedido de usuário, 2026-09-30,
   comparando com o material de referência: lá as notas não ficam alinhadas verticalmente por casa
@@ -187,7 +191,9 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   tudo da corda Mi grave, depois passa pra próxima), então cada corda começa depois de onde a
   anterior terminou, como uma tablatura (mesmo espírito de `buildTab()` em tab.js, só que em SVG
   com círculos). `modePositions()` já gera os `dots` nessa ordem (E→A→D→G→B→e, ascendente dentro
-  de cada corda), então `sequenceSVG` só precisa agrupar notas consecutivas da mesma corda.
+  de cada corda), então `sequenceSVG` só precisa agrupar notas consecutivas da mesma corda. As 6
+  linhas de corda são desenhadas por toda a largura do diagrama (não só embaixo de cada grupo de
+  notas) — achado testando: sem isso, os grupos pareciam blocos soltos, sem parecer uma tablatura.
   Acordes: sistema CAGED, 5 formas móveis (E A D C G), cada uma nasce de um acorde aberto real
   (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
   — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar

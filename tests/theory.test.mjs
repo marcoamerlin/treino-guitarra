@@ -27,6 +27,9 @@ test('hasPositions: só as pentatônicas (5 notas) têm posições', () => {
   assert.equal(hasPositions('pentMajor'), true);
   assert.equal(hasPositions('major'), false);
   assert.equal(hasPositions('minor'), false);
+  // "Modos gregos" também tem posições, mas por um caminho separado (isModes em app.js usa
+  // modePositions, não positionsOf/hasPositions) — por isso continua false aqui.
+  assert.equal(hasPositions('modes'), false);
 });
 
 test('fretboardNotes: só devolve notas que pertencem à escala, e marca a raiz certinho', () => {

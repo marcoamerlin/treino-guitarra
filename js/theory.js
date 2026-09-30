@@ -14,6 +14,10 @@ export const SCALES = {
   minor: { label: 'Menor natural', intervals: [0, 2, 3, 5, 7, 8, 10], degrees: ['1', '2', 'b3', '4', '5', 'b6', 'b7'] },
   pentMajor: { label: 'Pentatônica maior', intervals: [0, 2, 4, 7, 9], degrees: ['1', '2', '3', '5', '6'] },
   pentMinor: { label: 'Pentatônica menor', intervals: [0, 3, 5, 7, 10], degrees: ['1', 'b3', '4', '5', 'b7'] },
+  // Mesmas notas da escala maior — é o mesmo campo harmônico, só que explorado modo a modo (ver
+  // modePositions) em vez da vista simples "1 2 3 4 5 6 7" de sempre. Opção separada (pedido de
+  // usuário, 2026-09-30): a "Maior" comum continua do jeito que sempre foi.
+  modes: { label: 'Modos gregos', intervals: [0, 2, 4, 5, 7, 9, 11], degrees: ['1', '2', '3', '4', '5', '6', '7'] },
 };
 
 // Só as pentatônicas (5 notas) rendem posições/caixas úteis: com 7 notas a janela entre graus

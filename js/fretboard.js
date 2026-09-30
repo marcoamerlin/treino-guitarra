@@ -86,12 +86,9 @@ export function sequenceSVG(dots) {
 
   let x = LEFT;
   const placed = [];
-  const lines = [];
   groups.forEach((g) => {
     const y = yOf(g.string);
-    const groupStart = x;
     g.items.forEach((dot) => { placed.push({ x, y, dot }); x += STEP; });
-    lines.push({ x1: groupStart, y1: y, x2: x - STEP, y2: y });
     x += GROUP_GAP;
   });
 
@@ -99,11 +96,13 @@ export function sequenceSVG(dots) {
   const height = TOP + STRING_GAP * 5 + 22;
 
   let svg = `<svg class="fret-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Sequência de notas, corda por corda, na ordem de execução">`;
+  // As 6 cordas são linhas contínuas por toda a largura (como numa tablatura de verdade), não só
+  // embaixo de cada grupo de notas — achado testando: sem isso, os grupos pareciam blocos soltos.
+  for (let s = 0; s < 6; s++) {
+    svg += `<line class="fb-string" x1="${LEFT}" y1="${yOf(s)}" x2="${width - 12}" y2="${yOf(s)}"/>`;
+  }
   STRING_NAMES.forEach((name, s) => {
     svg += `<text class="fb-stringname" x="${LEFT - 20}" y="${yOf(s) + 4}" text-anchor="middle">${name}</text>`;
-  });
-  lines.forEach((l) => {
-    svg += `<line class="fb-string" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}"/>`;
   });
   placed.forEach(({ x: cx, y: cy, dot }) => {
     const parts = dot.name.split('/');
