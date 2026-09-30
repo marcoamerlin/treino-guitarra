@@ -179,8 +179,20 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   que o campo harmônico só depende da escala); em "Todas" mostra o campo harmônico inteiro (os 7
   acordes) na linha onde normalmente ficam os graus. Nunca calcular posição de modo de cabeça —
   `modePositions` deriva por computador (mesmo princípio de `tools/derive-chord-shapes.mjs` pros
-  acordes CAGED); testado casa por casa contra Sol maior em `tests/theory.test.mjs`. Uma posição de
-  cada vez, não todas sobrepostas: paleta categórica para 5+ grupos não passou no validador do
+  acordes CAGED); testado casa por casa contra Sol maior em `tests/theory.test.mjs`.
+  Segurança de oitava: a subida das 7 posições é contínua (fim de uma = início da próxima), o que
+  funciona bem pra Sol (âncora baixa, casa 3 — sobe até 19 no máximo) mas pra tônicas com âncora
+  alta (`anchorFret`; Ré = 10, por exemplo) ia empurrando as últimas posições pra casas que não
+  existem em violão nenhum — achado testando com o usuário, 2026-09-30: o 6º grau de Ré chegava à
+  casa 24. Corrigido descendo cada posição o máximo de oitavas possível (`floor(menor casa / 12)`,
+  a mesma nota 12 casas abaixo) sem nunca ficar negativa — pedido explícito do usuário: preferir
+  sempre a região de casas 1 a 12 quando der (por isso até as posições altas de Sol, tipo o 6º e 7º
+  grau, agora também aparecem baixas, mesmo já estando dentro de um braço de verdade antes do
+  ajuste). Isso quebra a conexão visual entre posições vizinhas pra tônicas de âncora alta (uma
+  posição pode aparecer mais baixa que a anterior) — inevitável: 7 posições conectadas sem nunca
+  descer não cabem no braço pra toda tônica, só pras que já começam baixo. Testado que nenhuma
+  posição de nenhuma tônica passa da casa 19 nem fica negativa.
+  Uma posição de cada vez, não todas sobrepostas: paleta categórica para 5+ grupos não passou no validador do
   skill dataviz para pontos que podem ficar lado a lado (mesmo motivo de referências do mercado
   mostrarem uma caixa por vez). Raiz/tônica destacada por anel, não por cor (funciona para qualquer
   visão). SVG do braço precisa de width/height além do viewBox, senão fica 0×0.

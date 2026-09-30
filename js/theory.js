@@ -147,6 +147,17 @@ export function modePositions(rootPc) {
         dots.push({ string: stringIdx, fret, pc, relative, root: relative === degreeRelative, name: noteName(pc) });
       });
     });
+    // Segurança de oitava: a subida é contínua entre posições (fim de uma = início da próxima),
+    // mas pra tônicas que já começam em casa alta (ex.: Ré, âncora 10 — ver anchorFret) isso ia
+    // empurrando as últimas posições pra casas que não existem em violão nenhum (achado testando
+    // com o usuário, 2026-09-30: 6º grau de Ré chegava até a casa 24). Uma casa e a mesma casa
+    // 12 semitons acima são a mesma nota, então descer a posição inteira o máximo de oitavas
+    // possível (sem ficar negativa) não muda nada da forma nem das notas — só deixa mais perto do
+    // braço aberto, região de 1 a 12 quando dá (pedido de usuário, 2026-09-30: preferir sempre
+    // essa região, não só evitar casa absurda). floor(menor casa / 12) é o maior número de oitavas
+    // que dá pra descer sem passar de casa 0.
+    const octavesDown = Math.floor(Math.min(...dots.map((d) => d.fret)) / 12);
+    if (octavesDown > 0) dots.forEach((d) => { d.fret -= octavesDown * 12; });
     const frets = dots.map((d) => d.fret);
     positions.push({
       index: m + 1,

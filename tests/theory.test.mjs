@@ -158,8 +158,12 @@ test('modePositions: campo harmônico de Sol maior bate casa por casa com a refe
     'B Frígio': [[8, 10, 12], [8, 10, 12], [7, 9, 11], [7, 9, 10], [7, 9, 10], [7, 8, 10]],
     'C Lídio': [[10, 12, 14], [10, 12, 13], [9, 11, 12], [9, 10, 12], [9, 10, 12], [8, 10, 12]],
     'D Mixolídio': [[12, 14, 15], [12, 13, 15], [11, 12, 14], [10, 12, 14], [10, 12, 14], [10, 12, 14]],
-    'E Eólio': [[14, 15, 17], [13, 15, 17], [12, 14, 16], [12, 14, 16], [12, 14, 15], [12, 14, 15]],
-    'F# Lócrio': [[15, 17, 19], [15, 17, 19], [14, 16, 17], [14, 16, 17], [14, 15, 17], [14, 15, 17]],
+    // 6º e 7º graus de Sol viram casa baixa (0-7) aqui: sem o ajuste de oitava, eles ficariam em
+    // 12-19 (matematicamente também corretos, mesma nota) — descemos pra ficar mais perto da
+    // região 1-12, pedido de usuário, 2026-09-30 (achado testando com Ré, que sem isso passava da
+    // casa 24, inexistente em violão nenhum).
+    'E Eólio': [[2, 3, 5], [1, 3, 5], [0, 2, 4], [0, 2, 4], [0, 2, 3], [0, 2, 3]],
+    'F# Lócrio': [[3, 5, 7], [3, 5, 7], [2, 4, 5], [2, 4, 5], [2, 3, 5], [2, 3, 5]],
   };
   const positions = modePositions(PC.G);
   assert.equal(positions.length, 7);
@@ -215,4 +219,25 @@ test('modeScaleNotes: relê as 7 notas da escala a partir de cada grau (mesmas n
       assert.deepEqual(rotated, base, `raiz ${root}, grau ${deg}: mudou o conjunto de notas`);
     }
   }
+});
+
+// Achado testando com o usuário (2026-09-30): pra tônicas com âncora alta (ex.: Ré, casa 10), a
+// subida contínua das 7 posições passava da casa 24 — não existe em violão nenhum. Corrigido
+// descendo cada posição o máximo de oitavas possível (mesma nota, 12 casas abaixo) sem ficar
+// negativa; pedido explícito do usuário: preferir sempre a região de casas 1 a 12 quando der.
+test('modePositions: nenhuma posição de nenhuma tônica passa da casa 19, nem fica negativa', () => {
+  for (let root = 0; root < 12; root++) {
+    modePositions(root).forEach((p) => {
+      p.dots.forEach((d) => {
+        assert.ok(d.fret >= 0, `raiz ${root}, ${p.name}: casa negativa (${d.fret})`);
+        assert.ok(d.fret <= 19, `raiz ${root}, ${p.name}: casa alta demais (${d.fret})`);
+      });
+    });
+  }
+});
+
+test('modePositions: a tônica de Ré (âncora alta) fica dentro do braço, sem repetir a casa 24 do achado original', () => {
+  const positions = modePositions(PC.D);
+  const maxFret = Math.max(...positions.flatMap((p) => p.dots.map((d) => d.fret)));
+  assert.ok(maxFret <= 19, `casa mais alta de Ré foi ${maxFret}, esperava até 19`);
 });
