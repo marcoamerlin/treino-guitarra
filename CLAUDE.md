@@ -180,6 +180,14 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   pontos que podem ficar lado a lado (mesmo motivo de referências do mercado mostrarem uma caixa
   por vez). Raiz/tônica destacada por anel, não por cor (funciona para qualquer visão). SVG do
   braço precisa de width/height além do viewBox, senão fica 0×0.
+  Posição de modo usa um desenho diferente do resto do explorador: `sequenceSVG` (fretboard.js), no
+  lugar de `fretboardSVG` (usado em "Todas", pentatônica e acordes). Pedido de usuário, 2026-09-30,
+  comparando com o material de referência: lá as notas não ficam alinhadas verticalmente por casa
+  (geometria real do braço) — o eixo horizontal segue a ORDEM DE EXECUÇÃO, corda por corda (toca
+  tudo da corda Mi grave, depois passa pra próxima), então cada corda começa depois de onde a
+  anterior terminou, como uma tablatura (mesmo espírito de `buildTab()` em tab.js, só que em SVG
+  com círculos). `modePositions()` já gera os `dots` nessa ordem (E→A→D→G→B→e, ascendente dentro
+  de cada corda), então `sequenceSVG` só precisa agrupar notas consecutivas da mesma corda.
   Acordes: sistema CAGED, 5 formas móveis (E A D C G), cada uma nasce de um acorde aberto real
   (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
   — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar

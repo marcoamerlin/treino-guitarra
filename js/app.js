@@ -8,7 +8,7 @@ import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
 import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, modePositions, fretboardNotes, fretboardIntervals } from './theory.js';
-import { fretboardSVG } from './fretboard.js';
+import { fretboardSVG, sequenceSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
@@ -273,10 +273,16 @@ function scaleExplorerView() {
       });
     }
 
-    const fretStart = m === 0 ? 0 : Math.max(0, pos[m - 1].start - 1);
-    const fretEnd = m === 0 ? 12 : pos[m - 1].end + 1;
-    const notes = m === 0 ? fretboardNotes(rp, sk, fretStart, fretEnd) : (isModes ? pos[m - 1].dots : fretboardNotes(rp, sk, fretStart, fretEnd));
-    root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart, fretEnd, dots: notes });
+    if (isModes && m > 0) {
+      // Posição de modo: sequencial (ordem de execução, corda por corda), não a geometria real do
+      // braço — ver sequenceSVG em fretboard.js.
+      root.querySelector('.fret-inner').innerHTML = sequenceSVG(pos[m - 1].dots);
+    } else {
+      const fretStart = m === 0 ? 0 : Math.max(0, pos[m - 1].start - 1);
+      const fretEnd = m === 0 ? 12 : pos[m - 1].end + 1;
+      const notes = fretboardNotes(rp, sk, fretStart, fretEnd);
+      root.querySelector('.fret-inner').innerHTML = fretboardSVG({ fretStart, fretEnd, dots: notes });
+    }
 
     root.querySelector('.tip').textContent = withPositions
       ? (m === 0

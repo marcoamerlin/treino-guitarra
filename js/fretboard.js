@@ -61,3 +61,61 @@ export function fretboardSVG({ fretStart = 0, fretEnd = 12, dots = [], muted = [
 
   return svg + '</svg>';
 }
+
+// Diagrama "sequencial": em vez da geometria real do braço (mesma casa = mesma coluna em toda
+// corda), o eixo horizontal segue a ORDEM DE EXECUÇÃO das notas — cada corda começa depois de
+// onde a anterior terminou, como uma tablatura (mesmo espírito de buildTab() em tab.js, só que
+// em SVG com círculos em vez de texto). Pedido de usuário, 2026-09-30, a partir do material de
+// referência do Instituto Magno: nas posições de modo, as notas não ficam alinhadas verticalmente
+// entre cordas — o desenho é "toque tudo da corda grave primeiro, depois passa pra próxima".
+// `dots` precisa vir na ordem de execução, com notas da MESMA corda já agrupadas em sequência
+// (é exatamente o formato que modePositions() gera).
+export function sequenceSVG(dots) {
+  const groups = [];
+  dots.forEach((dot) => {
+    const last = groups[groups.length - 1];
+    if (last && last.string === dot.string) last.items.push(dot);
+    else groups.push({ string: dot.string, items: [dot] });
+  });
+
+  const STEP = 42; // distância entre notas seguidas na mesma corda
+  const GROUP_GAP = 26; // espaço extra antes de começar a próxima corda
+  const LEFT = 34;
+  const TOP = 22;
+  const yOf = (string) => TOP + string * STRING_GAP;
+
+  let x = LEFT;
+  const placed = [];
+  const lines = [];
+  groups.forEach((g) => {
+    const y = yOf(g.string);
+    const groupStart = x;
+    g.items.forEach((dot) => { placed.push({ x, y, dot }); x += STEP; });
+    lines.push({ x1: groupStart, y1: y, x2: x - STEP, y2: y });
+    x += GROUP_GAP;
+  });
+
+  const width = x - GROUP_GAP + 24;
+  const height = TOP + STRING_GAP * 5 + 22;
+
+  let svg = `<svg class="fret-svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Sequência de notas, corda por corda, na ordem de execução">`;
+  STRING_NAMES.forEach((name, s) => {
+    svg += `<text class="fb-stringname" x="${LEFT - 20}" y="${yOf(s) + 4}" text-anchor="middle">${name}</text>`;
+  });
+  lines.forEach((l) => {
+    svg += `<line class="fb-string" x1="${l.x1}" y1="${l.y1}" x2="${l.x2}" y2="${l.y2}"/>`;
+  });
+  placed.forEach(({ x: cx, y: cy, dot }) => {
+    const parts = dot.name.split('/');
+    const r = dot.root ? 10 : parts.length > 1 ? 11 : 9;
+    svg += `<circle class="fb-dot${dot.root ? ' fb-root' : ''}" cx="${cx}" cy="${cy}" r="${r}"/>`;
+    if (parts.length > 1) {
+      svg += `<text class="fb-note fb-note-sm" x="${cx}" y="${cy - 1}" text-anchor="middle">${parts[0]}</text>`;
+      svg += `<text class="fb-note fb-note-sm" x="${cx}" y="${cy + 8}" text-anchor="middle">${parts[1]}</text>`;
+    } else {
+      svg += `<text class="fb-note" x="${cx}" y="${cy + 4}" text-anchor="middle">${dot.name}</text>`;
+    }
+  });
+
+  return svg + '</svg>';
+}
