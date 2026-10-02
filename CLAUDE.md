@@ -95,6 +95,33 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   canal se preciso, com tempo limite de 800ms para não travar caso `resume()` nunca responda. Usado
   por metronome.js e tab-player.js — qualquer novo produtor de som deve passar por ele também.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
+- `js/pitch.js` + `js/tuner.js`: afinador (botão "🎵 Afinador" no cabeçalho, pedido de usuário,
+  2026-10-02), só guitarra (a bateria não tem). Detecta a corda sozinho — o usuário preferiu isso a
+  escolher a corda na tela — e mostra a corda mais próxima, a nota, os Hz e o desvio em cents
+  (ponteiro de −50 a +50; dentro de ±5 cents, `IN_TUNE_CENTS`, conta como afinada, verde). Tocar
+  na corda na tela toca a gravação da corda solta (as mesmas de `audio/guitar-clean/`, notas MIDI
+  40/45/50/55/59/64, via `loadSamples` de tab-player.js; se falhar cai num tom puro).
+  `pitch.js` é puro e testado com sinais sintéticos (`tests/pitch.test.mjs`): `detectPitch` usa o
+  algoritmo YIN, não pico de autocorrelação — na corda Mi grave (82 Hz) o 2º harmônico costuma ser
+  mais forte que a fundamental e a autocorrelação cantaria uma oitava acima; YIN pega o menor
+  período abaixo do limiar. Testado também: erro ≤ 1 cent em senoides, sem erro de oitava com
+  fundamental fraca, `null` pra silêncio e ruído, e corda dedilhada simulada (Karplus-Strong) sem
+  erro de oitava (o desvio de 1,5 a 6 cents que ela mostra é do próprio modelo, que atrasa meia
+  amostra, não do detector). `tuner.js` liga o microfone: `getUserMedia` com
+  `echoCancellation/noiseSuppression/autoGainControl` desligados (o navegador trata a guitarra como
+  ruído e distorce a frequência), `AnalyserNode` com 4096 amostras lido a cada 60 ms, mediana das
+  últimas 5 leituras (o ataque da palheta não balança o ponteiro), e a tela só limpa depois de ~360 ms
+  sem nota clara (a corda decai). O analisador NÃO vai pra saída de áudio (senão o microfone sairia
+  no alto-falante). O contexto de áudio e o pedido de microfone saem juntos, ainda dentro do toque do
+  usuário (no iPhone o áudio só liga se criado num gesto, não depois do aviso de permissão). Enquanto
+  a referência toca a detecção é ignorada (o microfone ouviria o próprio app). Abrir o afinador para o
+  metrônomo, o "Ouvir" e o comando de voz (clique e tablatura entrariam no microfone; a voz disputa o
+  mesmo microfone), e fechar a tela solta o microfone (`sheetCleanups` em app.js; se a tela fechar
+  enquanto o aviso de permissão ainda está aberto, o microfone que chegar depois é solto também).
+  Verificado no navegador trocando `getUserMedia` por um microfone falso (onda dente-de-serra pelo
+  próprio Web Audio): afinada, ±cents, troca de corda, silêncio, permissão negada, sem microfone,
+  sem a API, permissão tardia, abrir/fechar várias vezes. **Não validado com microfone e guitarra
+  de verdade** — falta testar no celular (permissão no Android/iPhone, ruído de sala, precisão real).
 - `js/theory.js`: também tem INTERVAL_NAMES/intervalName/fretboardIntervals (aba "Intervalos" do
   explorador: intervalo de cada casa em relação a uma raiz, sem filtrar por escala). Cross-checado
   célula a célula (72 posições) contra um quadro de intervalos real do usuário — ver

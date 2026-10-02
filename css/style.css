@@ -574,6 +574,40 @@ footer.hint { text-align: center; color: var(--text-faint); font-size: 12px; mar
 .fb-note { fill: #1B1613; font: 700 10px var(--font-mono); }
 .fb-note.fb-note-sm { font-size: 7.5px; }
 
+/* ---- Afinador ---- */
+.tuner-lcd { background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px 14px 12px; margin: 8px 0 10px; text-align: center; }
+.tuner-note { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 84px; }
+.tuner-note .num { font-family: var(--font-mono); font-size: 56px; font-weight: 600; line-height: 1; color: var(--border); }
+.tuner-note .pt { margin-top: 6px; min-height: 1.3em; font-size: 12.5px; color: var(--text-faint); }
+.tuner-lcd.has-note .tuner-note .num { color: var(--lcd-text); }
+.tuner-lcd.in-tune .tuner-note .num { color: var(--led-green); }
+.tuner-meter {
+  position: relative; height: 38px; margin: 12px 6px 4px;
+  background: repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 10%) 0 100% / 100% 40% no-repeat;
+  border-bottom: 1px solid var(--border);
+}
+.tuner-meter::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--led-green); opacity: 0.55; }
+.tuner-needle {
+  position: absolute; left: 50%; top: 2px; bottom: -3px; width: 5px; margin-left: -2.5px; border-radius: 3px;
+  background: var(--lcd-text); opacity: 0.25; transition: left 0.12s linear, opacity 0.2s ease, background 0.2s ease;
+}
+.tuner-lcd.has-note .tuner-needle { opacity: 1; }
+.tuner-lcd.in-tune .tuner-needle { background: var(--led-green); box-shadow: 0 0 9px var(--led-green-glow); }
+.tuner-scale { display: flex; justify-content: space-between; margin: 0 6px; font: 500 10px var(--font-mono); color: var(--text-faint); }
+.tuner-info { display: flex; justify-content: space-between; min-height: 1.4em; margin-top: 10px; font: 500 13px var(--font-mono); color: var(--text-dim); }
+.tuner-status { margin: 0 0 12px; min-height: 1.5em; text-align: center; font-size: 14px; font-weight: 600; color: var(--text-dim); }
+.tuner-status.ok { color: var(--led-green); }
+.tuner-status.bad { color: #D9776F; }
+.tuner-strings { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+.tuner-string {
+  min-height: 58px; background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 8px;
+  font: 600 19px var(--font-mono); color: var(--brass);
+}
+.tuner-string small { display: block; margin-top: 2px; font-size: 10px; font-weight: 500; color: var(--text-faint); }
+.tuner-string.on { border-color: var(--brass); color: var(--lcd-text); }
+.tuner-string.ok { border-color: var(--led-green); color: var(--led-green); }
+.tuner-string.playing { background: var(--panel-3); border-color: var(--text-dim); }
+
 /* ---- Aviso rápido ---- */
 .toast {
   position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px));

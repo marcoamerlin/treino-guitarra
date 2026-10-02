@@ -10,6 +10,8 @@ import { voiceCommand, voiceSupported } from './voice-command.js';
 import { NOTE_NAMES, OPEN_PC, SCALES, hasPositions, positionsOf, modePositions, modeScaleNotes, ptName, fretboardNotes, fretboardIntervals } from './theory.js';
 import { fretboardSVG, sequenceSVG } from './fretboard.js';
 import { CAGED_SHAPES, CHORD_TYPES, voicingFrets } from './chord-shapes.js';
+import { tuner } from './tuner.js';
+import { GUITAR_STRINGS, IN_TUNE_CENTS } from './pitch.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 import { teacher } from './teacher.js';
@@ -63,6 +65,7 @@ let editing = false;
 let openIds = {};
 let pageRedrawers = [];   // atualizações de tela dependentes do metrônomo (página)
 let sheetRedrawers = [];  // idem, para a folha aberta
+let sheetCleanups = [];   // o que a folha aberta precisa soltar ao fechar (ex.: microfone do afinador)
 
 const currentPlan = (day) => store.getPlan(day.key, day.plan).filter((item) => EXERCISES[item.ex]);
 
@@ -101,6 +104,8 @@ function closeSheet() {
   sheet.classList.remove('open');
   sheetBody.replaceChildren();
   sheetRedrawers = [];
+  sheetCleanups.forEach((fn) => fn());
+  sheetCleanups = [];
 }
 
 sheet.addEventListener('click', (e) => {
@@ -173,6 +178,88 @@ function metronomeView() {
 
   sheetRedrawers.push(update);
   update();
+  return root;
+}
+
+// ---- Afinador ------------------------------------------------------------------------------
+
+const TUNER_MESSAGES = {
+  starting: ['Pedindo acesso ao microfone…', false],
+  denied: ['O navegador bloqueou o microfone. Libere nas permissões do site e tente de novo.', true],
+  nomic: ['Não encontrei nenhum microfone neste aparelho.', true],
+  unavailable: ['Este navegador não deixa usar o microfone aqui (precisa de HTTPS e de Web Audio).', true],
+  error: ['Não consegui ligar o microfone.', true],
+};
+
+function tunerView() {
+  const root = el('div');
+  root.innerHTML =
+    '<h2>Afinador</h2><div class="sub">Toque uma corda solta — o app descobre qual é</div>' +
+    '<div class="tuner-lcd">' +
+      '<div class="tuner-note"><span class="num">—</span><span class="pt"></span></div>' +
+      '<div class="tuner-meter"><div class="tuner-needle"></div></div>' +
+      '<div class="tuner-scale"><span>♭ −50</span><span>0</span><span>+50 ♯</span></div>' +
+      '<div class="tuner-info"><span class="hz"></span><span class="cents"></span></div>' +
+    '</div>' +
+    '<p class="tuner-status"></p>' +
+    '<button class="action" data-retry hidden>Tentar de novo</button>' +
+    '<div class="label-row"><span>TOQUE NA CORDA PARA OUVIR A REFERÊNCIA</span></div>' +
+    '<div class="tuner-strings"></div>' +
+    '<p class="tip">Deixe a guitarra perto do microfone e toque uma corda por vez, solta. Em lugar barulhento a leitura pode oscilar.</p>';
+
+  const lcd = root.querySelector('.tuner-lcd');
+  const stringsRow = root.querySelector('.tuner-strings');
+  const stringButtons = GUITAR_STRINGS.map((string, i) => {
+    const button = el('button', 'tuner-string', `${string.letter}<small>${string.pos}ª</small>`);
+    button.setAttribute('aria-label', `Ouvir ${string.pt}, ${string.pos}ª corda`);
+    button.addEventListener('click', () => tuner.playReference(i));
+    stringsRow.appendChild(button);
+    return button;
+  });
+  const retry = root.querySelector('[data-retry]');
+  retry.addEventListener('click', () => tuner.start());
+
+  const update = () => {
+    const r = tuner.reading;
+    const inTune = Boolean(r) && Math.abs(r.cents) <= IN_TUNE_CENTS;
+    lcd.classList.toggle('has-note', Boolean(r));
+    lcd.classList.toggle('in-tune', inTune);
+    root.querySelector('.tuner-note .num').textContent = r ? r.string.letter : '—';
+    root.querySelector('.tuner-note .pt').textContent = r ? `${r.string.pt} · ${r.string.pos}ª corda` : '';
+    root.querySelector('.tuner-needle').style.left = `${r ? Math.min(100, Math.max(0, 50 + r.cents)) : 50}%`;
+    root.querySelector('.hz').textContent = r ? `${r.freq.toFixed(1).replace('.', ',')} Hz` : '';
+    root.querySelector('.cents').textContent = r ? `${r.cents > 0 ? '+' : ''}${Math.round(r.cents)} ¢` : '';
+    stringButtons.forEach((button, i) => {
+      button.classList.toggle('on', Boolean(r) && r.stringIndex === i);
+      button.classList.toggle('ok', inTune && r.stringIndex === i);
+      button.classList.toggle('playing', tuner.playingString === i);
+    });
+
+    let text;
+    let bad = false;
+    if (TUNER_MESSAGES[tuner.state]) [text, bad] = TUNER_MESSAGES[tuner.state];
+    else if (tuner.playingString !== null) text = 'Tocando a referência…';
+    else if (!r) text = 'Toque uma corda solta…';
+    else if (inTune) text = 'Afinada ✓';
+    else if (Math.abs(r.cents) > 150) text = 'Muito longe da afinação — confira se é a corda certa';
+    else text = r.cents < 0 ? 'Baixa — aperte a corda' : 'Alta — afrouxe a corda';
+    const status = root.querySelector('.tuner-status');
+    status.textContent = text;
+    status.classList.toggle('bad', bad);
+    status.classList.toggle('ok', inTune);
+    retry.hidden = !(bad && tuner.state !== 'unavailable');
+  };
+
+  // Microfone, metrônomo, "Ouvir" e comando de voz não dividem o ambiente: o clique do metrônomo
+  // e a tablatura tocando entrariam no microfone, e o reconhecimento de voz disputa o mesmo microfone.
+  metronome.stop();
+  tabPlayer.stop();
+  voiceCommand.stop();
+
+  const off = tuner.on(update);
+  sheetCleanups.push(() => { off(); tuner.stop(); }); // fechar a tela solta o microfone
+  update();
+  tuner.start();
   return root;
 }
 
@@ -1540,6 +1627,7 @@ store.onRemoteChange(() => {
 });
 
 $('#metroBtn').addEventListener('click', () => openSheet(metronomeView()));
+$('#tunerBtn').addEventListener('click', () => openSheet(tunerView()));
 $('#syncBtn').addEventListener('click', () => openSheet(accountView()));
 $('#teacherBtn').addEventListener('click', () => openSheet(myStudentsView()));
 render();
