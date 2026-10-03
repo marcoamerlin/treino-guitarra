@@ -3,7 +3,7 @@ import { EXERCISES, CATEGORIES } from './data/exercises.js';
 import { CHORDS, chordCol } from './data/chords.js';
 import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
-import { metronome } from './metronome.js';
+import { metronome, SUBDIVISIONS, normalizeSubdivision } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
@@ -145,16 +145,21 @@ function metronomeView() {
     '<div class="seg-row">' +
       [2, 3, 4, 6].map((n) => `<button class="seg" data-beats="${n}">${n}</button>`).join('') +
     '</div>' +
-    '<button class="toggle-row" data-sub><span>Colcheias (2 cliques por tempo)</span>' +
-      '<span class="switch"><span class="knob"></span></span></button>' +
+    '<div class="label-row"><span>SUBDIVISÃO</span><span class="subdiv-name"></span></div>' +
+    '<div class="seg-row">' +
+      SUBDIVISIONS.map((s) => `<button class="seg" data-subdiv="${s.n}" aria-label="${s.name}">${s.n}</button>`).join('') +
+    '</div>' +
     '<button class="metro-btn big" data-toggle><span class="beat-led"></span><span class="label"></span></button>';
 
   const range = root.querySelector('.bpm-range');
   const update = () => {
     root.querySelector('.num').textContent = metronome.bpm;
     range.value = metronome.bpm;
-    root.querySelectorAll('.seg').forEach((b) => b.classList.toggle('on', Number(b.dataset.beats) === metronome.beats));
-    root.querySelector('.toggle-row .switch').classList.toggle('on', metronome.subdivide);
+    root.querySelectorAll('[data-beats]').forEach((b) => b.classList.toggle('on', Number(b.dataset.beats) === metronome.beats));
+    root.querySelectorAll('[data-subdiv]').forEach((b) => b.classList.toggle('on', Number(b.dataset.subdiv) === metronome.subdivision));
+    const sub = SUBDIVISIONS.find((s) => s.n === metronome.subdivision);
+    root.querySelector('.subdiv-name').textContent =
+      `${sub.name.toUpperCase()} · ${sub.n} ${sub.n === 1 ? 'CLIQUE' : 'CLIQUES'} POR TEMPO`;
     const button = root.querySelector('[data-toggle]');
     button.classList.toggle('on', metronome.running);
     button.querySelector('.label').textContent = metronome.running ? 'Parar' : 'Iniciar';
@@ -162,7 +167,7 @@ function metronomeView() {
   const remember = () => {
     store.setPref('metroBpm', metronome.bpm);
     store.setPref('metroBeats', metronome.beats);
-    store.setPref('metroSub', metronome.subdivide);
+    store.setPref('metroSubdiv', metronome.subdivision);
   };
 
   root.addEventListener('click', (e) => {
@@ -170,7 +175,7 @@ function metronomeView() {
     if (!btn) return;
     if (btn.dataset.delta) { metronome.setBpm(metronome.bpm + Number(btn.dataset.delta)); remember(); }
     else if (btn.dataset.beats) { metronome.setBeats(Number(btn.dataset.beats)); remember(); }
-    else if ('sub' in btn.dataset) { metronome.setSubdivide(!metronome.subdivide); remember(); }
+    else if (btn.dataset.subdiv) { metronome.setSubdivision(Number(btn.dataset.subdiv)); remember(); }
     else if ('toggle' in btn.dataset) metronome.toggle();
     update();
   });
@@ -1591,7 +1596,8 @@ function render() {
 
 metronome.bpm = store.getPref('metroBpm', 90);
 metronome.beats = store.getPref('metroBeats', 4);
-metronome.subdivide = store.getPref('metroSub', false);
+// metroSub (liga/desliga colcheias) é a preferência antiga: true vira 2 cliques por tempo.
+metronome.subdivision = normalizeSubdivision(store.getPref('metroSubdiv', store.getPref('metroSub', false) ? 2 : 1));
 
 tabPlayer.onChange(() => pageRedrawers.forEach((fn) => fn()));
 practiceTimer.onChange(() => pageRedrawers.forEach((fn) => fn()));
