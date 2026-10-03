@@ -7,7 +7,7 @@
 //            como estimativa (ver app.js, tela de andamento do professor)
 //   speeds { exId: { bpm, clean, errors, history: [{date, bpm}], updatedAt } }  — vale para sempre
 //   plans  { seg: { items: [{ex, min}] | null, updatedAt } }  — items null = plano padrão
-//   prefs  { metroBpm, metroBeats, metroSubdiv }  — só deste aparelho, não sincroniza
+//   prefs  { metroBpm, metroBeats, metroSubdiv, exSubdiv: {id: n} }  — só deste aparelho, não sincroniza
 //
 // Todo registro sincronizado leva carimbo de tempo, para o merge (merge.js) saber qual é mais novo.
 

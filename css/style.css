@@ -345,6 +345,8 @@ header.faceplate::before {
 .history-day { cursor: pointer; }
 .history-detail { margin: -4px 0 10px 14px; padding-left: 10px; border-left: 2px solid var(--border-soft); }
 
+.ex-subdiv { margin-top: 12px; }
+.ex-subdiv .seg { min-height: 40px; }
 .run-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
 .run-btn {
   min-height: 46px;

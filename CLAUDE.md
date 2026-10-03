@@ -99,7 +99,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   2 colcheias, 3 tercinas, 4 semicolcheias, 6 sextinas) — pedido do usuário, 2026-10-03, mesma
   mudança do Treino de Bateria. Trocar a subdivisão com o metrônomo tocando só vale a partir do
   próximo tempo. Preferência `metroSubdiv`; a antiga `metroSub: true` vira 2. Testes em
-  `tests/metronome.test.mjs`.
+  `tests/metronome.test.mjs`. A mesma fileira aparece no quadro de velocidade de cada exercício
+  (`speedBox`): cada exercício guarda a sua (`prefs.exSubdiv[id]`, padrão 1; só deste aparelho, o
+  professor não mexe) e "Tocar metrônomo" do exercício aplica BPM + subdivisão dele.
+  O quadro do exercício também ganhou a barra deslizante de BPM do metrônomo livre (pedido do
+  usuário, 2026-10-03): enquanto arrasta só mostra o número (e muda o metrônomo, se tocando); a
+  velocidade é gravada uma vez só, ao soltar (`change`), porque cada gravação zera limpos/erros.
 - `js/pitch.js` + `js/tuner.js`: afinador (botão "🎵 Afinador" no cabeçalho, pedido de usuário,
   2026-10-02), só guitarra (a bateria não tem). Detecta a corda sozinho — o usuário preferiu isso a
   escolher a corda na tela — e mostra a corda mais próxima, a nota, os Hz e o desvio em cents
