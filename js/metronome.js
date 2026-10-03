@@ -1,16 +1,29 @@
 // Metrônomo com Web Audio. Agenda os cliques com antecedência (lookahead) para não
 // depender da precisão do setInterval, que oscila principalmente no celular.
+// Subdivisão = número de cliques por tempo (1, 2, 3 = tercinas, 4, 6), não mais só liga/desliga
+// colcheias — pedido do usuário, 2026-10-03 (mesma mudança feita no Treino de Bateria).
 
 import { ensureRunningContext } from './audio-context.js';
 
 const LOOKAHEAD_S = 0.15;
 const TICK_MS = 25;
 
+// Subdivisões oferecidas na tela: cliques por tempo → nome.
+export const SUBDIVISIONS = [
+  { n: 1, name: 'Semínimas' },
+  { n: 2, name: 'Colcheias' },
+  { n: 3, name: 'Tercinas' },
+  { n: 4, name: 'Semicolcheias' },
+  { n: 6, name: 'Sextinas' },
+];
+const VALID = new Set(SUBDIVISIONS.map((s) => s.n));
+export const normalizeSubdivision = (n) => (VALID.has(Number(n)) ? Number(n) : 1);
+
 class Metronome {
   constructor() {
     this.bpm = 90;
     this.beats = 4;
-    this.subdivide = false;
+    this.subdivision = 1; // cliques por tempo
     this.running = false;
     this.ctx = null;
     this.timer = null;
@@ -32,7 +45,7 @@ class Metronome {
     this.emit('change');
   }
   setBeats(beats) { this.beats = beats; this.emit('change'); }
-  setSubdivide(on) { this.subdivide = on; this.emit('change'); }
+  setSubdivision(n) { this.subdivision = normalizeSubdivision(n); this.emit('change'); }
 
   async start() {
     if (this.running) return;
@@ -41,7 +54,9 @@ class Metronome {
     if (!this.running) return; // start()+stop() rápidos enquanto o await corria: desiste
     if (!ctx) { this.running = false; return; } // sem suporte a Web Audio neste navegador
     this.ctx = ctx;
-    this.step = 0;
+    this.beat = 0;      // tempos tocados desde o início
+    this.subPos = 0;    // posição do clique dentro do tempo (0 = o próprio tempo)
+    this.perBeat = this.subdivision;
     this.nextTime = this.ctx.currentTime + 0.08;
     this.timer = setInterval(() => this.tick(), TICK_MS);
     this.lockScreen();
@@ -60,10 +75,13 @@ class Metronome {
   toggle() { this.running ? this.stop() : this.start(); }
 
   tick() {
-    const perBeat = this.subdivide ? 2 : 1;
     while (this.nextTime < this.ctx.currentTime + LOOKAHEAD_S) {
-      const isSub = perBeat === 2 && this.step % 2 === 1;
-      const beatIndex = Math.floor(this.step / perBeat) % this.beats;
+      // Trocar a subdivisão com o metrônomo tocando só vale a partir do próximo tempo — senão
+      // o tempo que está tocando ficaria com cliques de duas subdivisões misturadas.
+      if (this.subPos === 0 && this.subdivision !== this.perBeat) this.perBeat = this.subdivision;
+      const perBeat = this.perBeat;
+      const isSub = this.subPos !== 0;
+      const beatIndex = this.beat % this.beats;
       const accent = !isSub && beatIndex === 0;
       this.click(this.nextTime, accent, isSub);
       if (!isSub) {
@@ -71,7 +89,8 @@ class Metronome {
         setTimeout(() => this.running && this.emit('beat', { beatIndex, accent }), delay);
       }
       this.nextTime += 60 / this.bpm / perBeat;
-      this.step += 1;
+      this.subPos += 1;
+      if (this.subPos >= perBeat) { this.subPos = 0; this.beat += 1; }
     }
   }
 

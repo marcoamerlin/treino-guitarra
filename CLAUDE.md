@@ -8,7 +8,7 @@ Interface e conteúdo em português do Brasil. Briefing original em `docs/briefi
 
 ```
 npm start      # node tools/serve.mjs → http://localhost:5173 (sem build, JS puro em módulos ES)
-npm test       # testes de merge, sync, tablaturas, acordes e planos (Node, sem dependências)
+npm test       # testes de merge, sync, metrônomo, tablaturas, acordes e planos (Node, sem dependências)
 ```
 
 Regenerar ícones: `powershell -File tools/make-icons.ps1`.
@@ -94,7 +94,12 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   na prática em 2026-09-23). `ensureRunningContext()` confere o estado antes de cada som e recria o
   canal se preciso, com tempo limite de 800ms para não travar caso `resume()` nunca responda. Usado
   por metronome.js e tab-player.js — qualquer novo produtor de som deve passar por ele também.
-- `js/metronome.js`: metrônomo Web Audio com agendamento antecipado.
+- `js/metronome.js`: metrônomo Web Audio com agendamento antecipado. Subdivisão = `subdivision`,
+  cliques por tempo, escolhido numa fileira "SUBDIVISÃO" na tela (`SUBDIVISIONS`: 1 semínimas,
+  2 colcheias, 3 tercinas, 4 semicolcheias, 6 sextinas) — pedido do usuário, 2026-10-03, mesma
+  mudança do Treino de Bateria. Trocar a subdivisão com o metrônomo tocando só vale a partir do
+  próximo tempo. Preferência `metroSubdiv`; a antiga `metroSub: true` vira 2. Testes em
+  `tests/metronome.test.mjs`.
 - `js/pitch.js` + `js/tuner.js`: afinador (botão "🎵 Afinador" no cabeçalho, pedido de usuário,
   2026-10-02), só guitarra (a bateria não tem). Detecta a corda sozinho — o usuário preferiu isso a
   escolher a corda na tela — e mostra a corda mais próxima, a nota, os Hz e o desvio em cents
