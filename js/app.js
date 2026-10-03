@@ -1128,6 +1128,7 @@ function speedBox(id, ex) {
       '<div class="bpm-lcd"><input class="num" type="number" inputmode="numeric" aria-label="BPM"><div class="unit">BPM</div></div>' +
       `<button class="bpm-btn" data-delta="${step}" aria-label="Aumentar ${step} BPM">+</button>` +
     '</div>' +
+    '<input class="bpm-range" type="range" min="30" max="240" aria-label="BPM">' +
     '<div class="run-row">' +
       '<button class="run-btn ok" data-run="ok">✓ Limpo <small></small></button>' +
       '<button class="run-btn bad" data-run="bad">✗ Errei <small></small></button>' +
@@ -1153,7 +1154,10 @@ function speedBox(id, ex) {
 
   const update = () => {
     const speed = store.getSpeed(id, cfg);
-    box.querySelector('.num').value = speed.bpm;
+    if (!dragging) { // não puxa a barra de volta enquanto o dedo ainda está nela
+      box.querySelector('.num').value = speed.bpm;
+      range.value = speed.bpm;
+    }
     box.querySelector('.ok small').textContent = `${speed.clean}/3`;
     box.querySelector('.bad small').textContent = `${speed.errors}/2`;
     box.querySelector('[data-metro]').classList.toggle('on', metronome.running);
@@ -1188,6 +1192,25 @@ function speedBox(id, ex) {
       holder.textContent = 'O histórico de velocidade aparece aqui conforme você evolui.';
     }
   };
+
+  // Barra de BPM, como a do metrônomo livre. Enquanto arrasta só mostra o número (e muda o
+  // metrônomo, se estiver tocando); grava a velocidade uma vez só, ao soltar — cada gravação
+  // zera a contagem de limpos/erros e passa pelo histórico, não dá pra ser a cada pixel.
+  const range = box.querySelector('.bpm-range');
+  let dragging = false;
+  range.addEventListener('input', () => {
+    dragging = true;
+    box.querySelector('.num').value = range.value;
+    if (metronome.running) metronome.setBpm(Number(range.value));
+  });
+  range.addEventListener('change', () => {
+    dragging = false;
+    const speed = store.getSpeed(id, cfg);
+    const target = Number(range.value);
+    if (target !== speed.bpm) store.adjustSpeed(id, cfg, target - speed.bpm, todayISO);
+    if (metronome.running) metronome.setBpm(store.getSpeed(id, cfg).bpm);
+    pageRedrawers.forEach((fn) => fn());
+  });
 
   box.querySelector('.num').addEventListener('change', (e) => {
     const raw = e.target.value.trim();
