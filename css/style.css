@@ -298,6 +298,10 @@ header.faceplate::before {
 .timer-chip.running::before { content: '● '; color: var(--led-green); }
 .teacher-tag { color: var(--brass); }
 .locked-note { font-size: 12px; color: var(--text-faint); font-style: italic; padding: 0 2px; }
+.teacher-note { background: var(--panel-2); border: 1px solid var(--brass-dim); border-left: 3px solid var(--brass); border-radius: 0 8px 8px 0; padding: 10px 12px; margin: 0 0 12px; }
+.teacher-note-label { font-family: var(--font-mono); font-size: 11px; color: var(--brass); letter-spacing: 0.4px; margin-bottom: 4px; }
+.teacher-note p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+textarea.notes.teacher-note-input { min-height: 0; margin-top: 8px; }
 
 /* ---- Velocidade e metrônomo ---- */
 .bpm-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; }

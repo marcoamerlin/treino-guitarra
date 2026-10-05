@@ -982,6 +982,17 @@ function studentPlanView(student) {
         drawPlan();
       });
 
+      // Observação pra esse aluno nesse exercício — só muda `item`, sem redesenhar (perderia o
+      // foco a cada letra); vai junto no "Salvar plano deste dia".
+      const note = el('textarea', 'notes teacher-note-input');
+      note.rows = 2;
+      note.maxLength = 500;
+      note.placeholder = 'Observação para o aluno (opcional) — ex.: foque na palhetada alternada, sem tensionar a mão…';
+      note.value = item.note || '';
+      note.setAttribute('aria-label', 'Observação para o aluno');
+      note.addEventListener('input', () => { item.note = note.value; });
+      row.appendChild(note);
+
       // BPM: só para exercícios com metrônomo. Grava na hora (não espera o "Salvar plano"),
       // igual à régua +/- do próprio exercício — é um dado à parte (speeds), não do plano.
       if (ex && ex.bpm) {
@@ -1343,6 +1354,12 @@ function listenButtons(id, ex, tab) {
 function exerciseBody(id, ex, item, tkey, canRun) {
   const body = el('div', 'block-body open');
 
+  if (item.note) {
+    const note = el('div', 'teacher-note', '<div class="teacher-note-label">🎓 OBSERVAÇÃO DO PROFESSOR</div><p></p>');
+    note.querySelector('p').textContent = item.note; // textContent: o texto vem de outra pessoa, nunca como HTML
+    body.appendChild(note);
+  }
+
   body.appendChild(timerBox(tkey, item.min, canRun));
 
   if (ex.steps && ex.steps.length) {
@@ -1414,6 +1431,7 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
     const durationEl = meta.querySelector('.duration');
     let html = `${item.min} min · ${CATEGORIES[ex.cat]}`;
     if (item.locked) html += ' · <span class="teacher-tag">🎓 professor</span>';
+    if (item.note) html += ' · <span class="teacher-tag">📝 observação</span>';
     const elapsed = practiceTimer.getElapsed(tkey);
     if (elapsed > 0) {
       const remaining = item.min * 60 - elapsed;

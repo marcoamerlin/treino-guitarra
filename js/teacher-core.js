@@ -92,13 +92,22 @@ export async function fetchStudentData(client, studentId) {
 // e ajustar tempo/BPM, mas não remover nem trocar um exercício que o professor definiu; só os que
 // ele mesmo adicionar depois (sem essa marca) ficam livres pra remover/trocar. Ver exerciseCard em
 // app.js.
+// item.note: observação do professor pra esse aluno nesse exercício (pedido do usuário,
+// 2026-10-03) — gravada aparada; vazia some do item, pra não sujar o plano com note: ''.
+const MAX_NOTE = 500;
+function cleanItem(item) {
+  const { note, ...rest } = item;
+  const text = typeof note === 'string' ? note.trim().slice(0, MAX_NOTE) : '';
+  return text ? { ...rest, note: text, locked: true } : { ...rest, locked: true };
+}
+
 export async function writeStudentPlan(client, studentId, dayKey, items) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { data: row, error } = await client
       .from('user_data').select('data, rev').eq('user_id', studentId).maybeSingle();
     if (error) throw error;
 
-    const plan = { items: items.map((item) => ({ ...item, locked: true })), updatedAt: Date.now() };
+    const plan = { items: items.map(cleanItem), updatedAt: Date.now() };
     if (!row) {
       const fresh = { logs: {}, speeds: {}, plans: { [dayKey]: plan } };
       const { error: insertError } = await client

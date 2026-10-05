@@ -53,6 +53,13 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   os botões Trocar/Remover nesse caso (mostra "🎓 Definido pelo professor" no lugar) e o botão
   "Restaurar plano padrão" fica desabilitado se o dia tiver algum item travado — senão seria uma
   forma disfarçada de apagar o que o professor montou.
+  O professor também pode escrever uma observação por exercício pra aquele aluno (pedido do
+  usuário, 2026-10-03, feito primeiro na bateria e depois igual aqui): campo de texto em cada item
+  de "Planejar a semana", gravado como `item.note` junto com o plano do dia (`writeStudentPlan`
+  apara e descarta a vazia, máx. 500 caracteres). O aluno vê "📝 observação" na linha do cartão e,
+  ao abrir o exercício, um quadro "OBSERVAÇÃO DO PROFESSOR" no topo (renderizado com `textContent`,
+  nunca como HTML — o texto vem de outra pessoa). Só o professor escreve; editar tempo/ordem no
+  aparelho do aluno preserva a nota. A foto do plano (`log.plan`) continua só com `ex`/`min`.
   UI: dentro da folha "Conta e sincronização" (`teacherSectionView()`/`studentPlanView()` em
   app.js) — o editor de plano do aluno é uma versão simplificada do "Editar dia" pessoal (sem
   timer/áudio/comando de voz), com minutos e BPM editáveis por exercício; o BPM grava na hora

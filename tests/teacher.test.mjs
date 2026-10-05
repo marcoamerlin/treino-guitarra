@@ -137,6 +137,24 @@ test('writeStudentPlan: cria a linha do aluno se ele nunca sincronizou, marcando
   assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 10, locked: true }]);
 });
 
+test('writeStudentPlan: guarda a observação do professor aparada e descarta a vazia', async () => {
+  const { client, db } = makeServer();
+  await writeStudentPlan(client, 's1', 'seg', [
+    { ex: 'chroma', min: 10, note: '  Foque na palhetada alternada  ' },
+    { ex: 'pent1', min: 8, note: '   ' },
+  ]);
+  assert.deepEqual(db.user_data[0].data.plans.seg.items, [
+    { ex: 'chroma', min: 10, note: 'Foque na palhetada alternada', locked: true },
+    { ex: 'pent1', min: 8, locked: true },
+  ]);
+});
+
+test('writeStudentPlan: observação com mais de 500 caracteres é cortada em 500', async () => {
+  const { client, db } = makeServer();
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'chroma', min: 10, note: 'a'.repeat(900) }]);
+  assert.equal(db.user_data[0].data.plans.seg.items[0].note.length, 500);
+});
+
 test('writeStudentPlan: troca só o dia editado, sem mexer em logs/speeds nem noutros dias', async () => {
   const { client, db } = makeServer();
   db.user_data.push({
