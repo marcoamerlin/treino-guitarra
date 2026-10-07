@@ -15,9 +15,14 @@ export const SUBDIVISIONS = [
   { n: 3, name: 'Tercinas' },
   { n: 4, name: 'Semicolcheias' },
   { n: 6, name: 'Sextinas' },
+  { n: 7, name: 'Sétuplas' }, // pedido do usuário, 2026-10-05 (bateria), igualado na guitarra em 2026-10-07
 ];
 const VALID = new Set(SUBDIVISIONS.map((s) => s.n));
 export const normalizeSubdivision = (n) => (VALID.has(Number(n)) ? Number(n) : 1);
+
+// Tempos por compasso oferecidos na tela. O 7 (compasso ímpar, 7/4 ou 7/8) veio da bateria
+// (pedido do usuário, 2026-10-05) e foi igualado na guitarra em 2026-10-07.
+export const BEATS_PER_BAR = [2, 3, 4, 6, 7];
 
 class Metronome {
   constructor() {
