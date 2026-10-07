@@ -103,8 +103,10 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   por metronome.js e tab-player.js — qualquer novo produtor de som deve passar por ele também.
 - `js/metronome.js`: metrônomo Web Audio com agendamento antecipado. Subdivisão = `subdivision`,
   cliques por tempo, escolhido numa fileira "SUBDIVISÃO" na tela (`SUBDIVISIONS`: 1 semínimas,
-  2 colcheias, 3 tercinas, 4 semicolcheias, 6 sextinas) — pedido do usuário, 2026-10-03, mesma
-  mudança do Treino de Bateria. Trocar a subdivisão com o metrônomo tocando só vale a partir do
+  2 colcheias, 3 tercinas, 4 semicolcheias, 6 sextinas, 7 sétuplas) — pedido do usuário,
+  2026-10-03, mesma mudança do Treino de Bateria. Compassos oferecidos vêm de `BEATS_PER_BAR`
+  (2, 3, 4, 6, 7); o 7 e as sétuplas nasceram na bateria (2026-10-05) e foram igualados aqui a
+  pedido do usuário (2026-10-07). Trocar a subdivisão com o metrônomo tocando só vale a partir do
   próximo tempo. Preferência `metroSubdiv`; a antiga `metroSub: true` vira 2. Testes em
   `tests/metronome.test.mjs`. A mesma fileira aparece no quadro de velocidade de cada exercício
   (`speedBox`): cada exercício guarda a sua (`prefs.exSubdiv[id]`, padrão 1; só deste aparelho, o

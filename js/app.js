@@ -3,7 +3,7 @@ import { EXERCISES, CATEGORIES } from './data/exercises.js';
 import { CHORDS, chordCol } from './data/chords.js';
 import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
-import { metronome, SUBDIVISIONS, normalizeSubdivision } from './metronome.js';
+import { metronome, SUBDIVISIONS, BEATS_PER_BAR, normalizeSubdivision } from './metronome.js';
 import { tabPlayer } from './tab-player.js';
 import { practiceTimer } from './practice-timer.js';
 import { voiceCommand, voiceSupported } from './voice-command.js';
@@ -162,7 +162,7 @@ function metronomeView() {
     '<input class="bpm-range" type="range" min="30" max="240" aria-label="BPM">' +
     '<div class="label-row"><span>COMPASSO</span></div>' +
     '<div class="seg-row">' +
-      [2, 3, 4, 6].map((n) => `<button class="seg" data-beats="${n}">${n}</button>`).join('') +
+      BEATS_PER_BAR.map((n) => `<button class="seg" data-beats="${n}">${n}</button>`).join('') +
     '</div>' +
     subdivRowHTML() +
     '<button class="metro-btn big" data-toggle><span class="beat-led"></span><span class="label"></span></button>';
