@@ -4,6 +4,11 @@ PWA de treino diário de guitarra (rock, técnica: velocidade e limpeza). Uso pr
 também no notebook. Estética de painel de amplificador (fundo escuro, LCD âmbar, switches).
 Interface e conteúdo em português do Brasil. Briefing original em `docs/briefing.md`.
 
+Pastas no notebook do usuário (Windows): este projeto fica em `C:\guitarra` (repositório
+`marcoamerlin/treino-guitarra`) e o Treino de Bateria — réplica deste app pra bateria — em
+`C:\bateria` (`marcoamerlin/treino-bateria`). Mudanças que valem pros dois apps costumam ser
+feitas nos dois.
+
 ## Rodar
 
 ```
