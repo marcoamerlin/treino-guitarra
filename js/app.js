@@ -1688,6 +1688,18 @@ function renderDay() {
   const editBtn = el('button', `action${editing ? ' on' : ''}`, editing ? '✓ Concluir edição' : '✎ Editar dia');
   editBtn.addEventListener('click', () => { editing = !editing; render(); });
   actions.appendChild(editBtn);
+  // Atalho sempre à vista: criar um exercício próprio já o coloca neste dia (igual a "Criar" do banco).
+  const create = el('button', 'action', '+ Criar exercício');
+  create.addEventListener('click', () => {
+    openSheet(exerciseFormView({
+      onSaved: (id, ex) => {
+        closeSheet();
+        openIds[id] = true;
+        updatePlan(day, (items) => { items.push({ ex: id, min: ex.min }); });
+      },
+    }));
+  });
+  actions.appendChild(create);
   if (editing) {
     const add = el('button', 'action', '+ Adicionar exercício');
     add.addEventListener('click', () => openSheet(bankView(day, 'add')));

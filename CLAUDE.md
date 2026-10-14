@@ -283,7 +283,9 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   `exerciseOf(id)` em app.js é o lookup único (banco fixo, depois os do usuário); `currentPlan` descarta
   ids que não existem mais, então apagar tira o exercício de todos os dias sem mexer nos planos. Na
   visão do professor (`studentPlanView`) o `lookup` lê `studentData.exercises`, pra ele ver o título.
-  UI: `+ Criar exercício` no topo do banco (já adiciona ao dia ou troca o item), categoria "Meus
+  UI: `+ Criar exercício` na tela do dia, sempre visível ao lado de "Editar dia" (achado real: a 1ª
+  versão só tinha o botão dentro de Editar dia → Adicionar, e o usuário não achou), e também no topo
+  do banco (nos dois casos já adiciona ao dia; no banco em modo Trocar, substitui o item), categoria "Meus
   exercícios", `exerciseFormView` (criar/editar/apagar com `confirm`); o cartão mostra o texto em
   `.custom-text` com `textContent` (o texto é do usuário, nunca HTML). Verificado no navegador: título
   vazio barrado, criar, texto com `<img onerror>` aparece literal (sem executar), editar (minutos
