@@ -302,6 +302,9 @@ header.faceplate::before {
 .teacher-note-label { font-family: var(--font-mono); font-size: 11px; color: var(--brass); letter-spacing: 0.4px; margin-bottom: 4px; }
 .teacher-note p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
 textarea.notes.teacher-note-input { min-height: 0; margin-top: 8px; }
+.custom-text { margin: 0 0 12px; padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; font-size: 14px; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; overflow-wrap: anywhere; }
+.action.danger { color: #D9776F; border-color: #7A3833; }
+.action[data-create] { margin: 2px 0 10px; }
 
 /* ---- Velocidade e metrônomo ---- */
 .bpm-box { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 12px 0; }

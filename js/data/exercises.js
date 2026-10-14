@@ -21,6 +21,7 @@ export const CATEGORIES = {
   jam: 'Jam e gravação',
   teoria: 'Teoria',
   descanso: 'Descanso',
+  meus: 'Meus exercícios', // criados pelo usuário (custom-exercises.js), não ficam neste arquivo
 };
 
 const BACKING_TRACK = {

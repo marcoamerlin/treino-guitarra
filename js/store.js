@@ -7,6 +7,8 @@
 //            como estimativa (ver app.js, tela de andamento do professor)
 //   speeds { exId: { bpm, clean, errors, history: [{date, bpm}], updatedAt } }  — vale para sempre
 //   plans  { seg: { items: [{ex, min}] | null, updatedAt } }  — items null = plano padrão
+//   exercises { meu_xxx: { id, title, text, min, createdAt, updatedAt } | { id, deleted, updatedAt } }
+//            — exercícios criados pelo usuário (custom-exercises.js); a chave some do snapshot se vazia
 //   prefs  { metroBpm, metroBeats, metroSubdiv, exSubdiv: {id: n} }  — só deste aparelho, não sincroniza
 //
 // Todo registro sincronizado leva carimbo de tempo, para o merge (merge.js) saber qual é mais novo.
@@ -15,7 +17,7 @@ const KEY = 'guitarTraining_v2';
 const MIN_BPM = 30;
 const MAX_BPM = 260;
 
-const fresh = () => ({ logs: {}, speeds: {}, plans: {}, prefs: {} });
+const fresh = () => ({ logs: {}, speeds: {}, plans: {}, exercises: {}, prefs: {} });
 const now = () => Date.now();
 
 function load() {
@@ -87,12 +89,15 @@ export const store = {
   onChange(fn) { changeListeners.add(fn); },
   onRemoteChange(fn) { remoteListeners.add(fn); },
   snapshot() {
-    return JSON.parse(JSON.stringify({ logs: data.logs, speeds: data.speeds, plans: data.plans }));
+    const out = { logs: data.logs, speeds: data.speeds, plans: data.plans };
+    if (Object.keys(data.exercises).length) out.exercises = data.exercises; // simétrico a mergeData
+    return JSON.parse(JSON.stringify(out));
   },
   applyRemote(merged) {
     data.logs = merged.logs;
     data.speeds = merged.speeds;
     data.plans = merged.plans;
+    data.exercises = merged.exercises || {};
     persist();
     remoteListeners.forEach((fn) => fn());
   },
@@ -180,6 +185,32 @@ export const store = {
   // Guarda "sem plano personalizado" com carimbo, para a restauração também sincronizar.
   resetPlan(dayKey) {
     data.plans[dayKey] = { items: null, updatedAt: now() };
+    save();
+  },
+
+  // ---- Exercícios criados pelo usuário ----
+  // Devolve os registros crus (incluindo as lápides); quem mostra passa por customToExercise().
+  getCustomExercises() {
+    return { ...data.exercises };
+  },
+  // Cria (sem id) ou edita (com id). `fields` já vem limpo de cleanFields(). Devolve o id.
+  saveCustomExercise(id, fields) {
+    const existing = data.exercises[id];
+    const t = now();
+    data.exercises[id] = {
+      id,
+      title: fields.title,
+      text: fields.text,
+      min: fields.min,
+      createdAt: existing && existing.createdAt ? existing.createdAt : t,
+      updatedAt: t,
+    };
+    save();
+    return id;
+  },
+  // Lápide, não remoção: ver custom-exercises.js. Some do plano porque o id deixa de existir.
+  deleteCustomExercise(id) {
+    data.exercises[id] = { id, deleted: true, updatedAt: now() };
     save();
   },
 

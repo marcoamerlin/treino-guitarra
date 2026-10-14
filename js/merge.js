@@ -3,7 +3,7 @@
 //
 // Regras:
 //  - logs: cada exercício marcado (done) vale pelo carimbo de tempo mais novo; notas idem.
-//  - speeds e plans: vence o registro alterado por último (updatedAt).
+//  - speeds, plans e exercises: vence o registro alterado por último (updatedAt).
 //  - plan (dentro de um log): foto do plano do dia, gravada uma vez no 1º toque e nunca mais
 //    mudada (ver store.js); os dois aparelhos calculam ela a partir do mesmo plano quase no
 //    mesmo instante, então não precisa de carimbo — só fica com quem já tiver uma.
@@ -50,11 +50,18 @@ export function mergeRecords(a = {}, b = {}) {
 }
 
 export function mergeData(local = {}, remote = {}) {
-  return {
+  const merged = {
     logs: mergeLogs(local.logs, remote.logs),
     speeds: mergeRecords(local.speeds, remote.speeds),
     plans: mergeRecords(local.plans, remote.plans),
   };
+  // exercises (criados pelo usuário, ver custom-exercises.js): vale o updatedAt mais novo por id,
+  // inclusive a lápide de um exercício apagado. A chave só entra quando existe algum: a linha de
+  // quem nunca criou nada continua exatamente como era (sem escrita extra no servidor, e
+  // sameData(merged, local) segue igual — store.snapshot() também omite a chave quando vazia).
+  const exercises = mergeRecords(local.exercises, remote.exercises);
+  if (Object.keys(exercises).length) merged.exercises = exercises;
+  return merged;
 }
 
 // Serialização com chaves ordenadas: o Postgres (jsonb) reordena as chaves,

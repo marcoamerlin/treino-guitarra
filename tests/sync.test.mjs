@@ -150,3 +150,40 @@ test('sem configuração, a sincronização fica desligada e não chama o SDK', 
   assert.equal(sync.getState().status, 'disabled');
   assert.equal(loaded, false);
 });
+
+const withExercises = (exercises) => ({ ...day({}, {}), exercises });
+
+test('exercício criado num aparelho aparece no outro, e apagar também sincroniza (sem voltar)', async () => {
+  const server = makeServer();
+  const created = { meu_a: { id: 'meu_a', title: 'Meu exercício', text: 'texto', min: 10, createdAt: 100, updatedAt: 100 } };
+  const phone = makeDevice(server, withExercises(created));
+  const laptop = makeDevice(server, day({}, {}));
+  await phone.sync.init();
+  await laptop.sync.init();
+  assert.equal(laptop.data.exercises.meu_a.title, 'Meu exercício');
+
+  // o notebook edita e depois apaga; o celular sincroniza e tem que ficar com a lápide
+  laptop.data = { ...laptop.data, exercises: { meu_a: { ...created.meu_a, title: 'Editado', updatedAt: 200 } } };
+  await laptop.sync.syncNow();
+  await phone.sync.syncNow();
+  assert.equal(phone.data.exercises.meu_a.title, 'Editado');
+
+  laptop.data = { ...laptop.data, exercises: { meu_a: { id: 'meu_a', deleted: true, updatedAt: 300 } } };
+  await laptop.sync.syncNow();
+  await phone.sync.syncNow();
+  assert.equal(phone.data.exercises.meu_a.deleted, true);
+  await laptop.sync.syncNow(); // o celular não ressuscita o exercício no servidor
+  assert.equal(server.row.data.exercises.meu_a.deleted, true);
+});
+
+test('com exercícios criados, sincronizar sem novidades continua sem gravar nada', async () => {
+  const server = makeServer();
+  const created = { meu_a: { id: 'meu_a', title: 'Meu', text: '', min: 10, createdAt: 100, updatedAt: 100 } };
+  const phone = makeDevice(server, withExercises(created));
+  await phone.sync.init();
+  const rev = server.row.rev;
+  await phone.sync.syncNow();
+  await phone.sync.syncNow();
+  assert.equal(server.row.rev, rev);
+  assert.equal(server.updates, 0);
+});

@@ -84,3 +84,33 @@ test('sameData ignora a ordem das chaves (o jsonb do Postgres reordena)', () => 
   assert.ok(sameData({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 3, c: 2 }, a: 1 }));
   assert.ok(!sameData({ a: 1 }, { a: 2 }));
 });
+
+test('exercises (criados pelo usuário): exercícios de aparelhos diferentes se somam', () => {
+  const a = { exercises: { meu_a: { id: 'meu_a', title: 'A', min: 10, updatedAt: 100 } } };
+  const b = { exercises: { meu_b: { id: 'meu_b', title: 'B', min: 10, updatedAt: 200 } } };
+  assert.deepEqual(Object.keys(mergeData(a, b).exercises).sort(), ['meu_a', 'meu_b']);
+});
+
+test('exercises: a edição mais recente vence, nos dois sentidos', () => {
+  const old = { exercises: { meu_a: { id: 'meu_a', title: 'antigo', min: 10, updatedAt: 100 } } };
+  const recent = { exercises: { meu_a: { id: 'meu_a', title: 'novo', min: 10, updatedAt: 300 } } };
+  assert.equal(mergeData(old, recent).exercises.meu_a.title, 'novo');
+  assert.equal(mergeData(recent, old).exercises.meu_a.title, 'novo');
+});
+
+test('exercises: apagar mais recente vence a edição antiga (a lápide impede o exercício de voltar)', () => {
+  const edited = { exercises: { meu_a: { id: 'meu_a', title: 'A', min: 10, updatedAt: 100 } } };
+  const deleted = { exercises: { meu_a: { id: 'meu_a', deleted: true, updatedAt: 200 } } };
+  assert.equal(mergeData(edited, deleted).exercises.meu_a.deleted, true);
+  assert.equal(mergeData(deleted, edited).exercises.meu_a.deleted, true);
+  // e o contrário: recriar/editar depois de apagado em outro aparelho vence a lápide
+  const revived = { exercises: { meu_a: { id: 'meu_a', title: 'A2', min: 10, updatedAt: 300 } } };
+  assert.equal(mergeData(deleted, revived).exercises.meu_a.title, 'A2');
+});
+
+test('exercises: quem nunca criou nenhum não ganha a chave (a linha no servidor fica igual)', () => {
+  const merged = mergeData({ logs: {}, speeds: {}, plans: {} }, { logs: {}, speeds: {}, plans: {} });
+  assert.equal('exercises' in merged, false);
+  const withOne = mergeData({ exercises: { meu_a: { id: 'meu_a', title: 'A', updatedAt: 1 } } }, {});
+  assert.ok(sameData(withOne, mergeData(withOne, {})));
+});

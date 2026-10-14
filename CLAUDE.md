@@ -271,6 +271,30 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   (comentado em chord-shapes.js); menor/7/maj7/m7 vêm de abaixar 1 nota específica da forma maior
   — a mesma técnica dos acordes abertos de verdade. Nunca calcular grau de acorde de cabeça: usar
   tools/derive-chord-shapes.mjs para conferir por computador.
+- `js/custom-exercises.js` (pedido do usuário, 2026-10-14): **exercícios criados pelo usuário**, por
+  enquanto só texto — título + instruções + minutos (sem BPM/metrônomo/tablatura; isso fica pra uma
+  2ª fase). Funções puras: `cleanFields` (título obrigatório; minutos 5–90, vazio/inválido vira 10),
+  `makeCustomId` (`meu_<tempo36><3 letras>`), `customToExercise` (devolve o mesmo formato do banco,
+  `cat: 'meus'`, `custom: true`; `null` se apagado/ausente), `customList`. Guardados em
+  `data.exercises` (`{id: {id,title,text,min,createdAt,updatedAt}}`) via `store.saveCustomExercise` /
+  `deleteCustomExercise`; apagar deixa um **tombstone** (`deleted:true`) pra a exclusão sincronizar e
+  o outro aparelho não ressuscitar o exercício. A chave `exercises` só vai no snapshot/merge quando
+  não está vazia (igual dos dois lados, senão `sameData` acharia diferença e faria gravações à toa).
+  `exerciseOf(id)` em app.js é o lookup único (banco fixo, depois os do usuário); `currentPlan` descarta
+  ids que não existem mais, então apagar tira o exercício de todos os dias sem mexer nos planos. Na
+  visão do professor (`studentPlanView`) o `lookup` lê `studentData.exercises`, pra ele ver o título.
+  UI: `+ Criar exercício` no topo do banco (já adiciona ao dia ou troca o item), categoria "Meus
+  exercícios", `exerciseFormView` (criar/editar/apagar com `confirm`); o cartão mostra o texto em
+  `.custom-text` com `textContent` (o texto é do usuário, nunca HTML). Verificado no navegador: título
+  vazio barrado, criar, texto com `<img onerror>` aparece literal (sem executar), editar (minutos
+  fora do limite viram 5), persistência após recarregar, filtro do banco + "já no plano", apagar
+  (cancelar mantém) e layout no celular. Cuidado de teste: `requestSubmit()` respeita o `min` do
+  campo, então valor fora do limite só chega no `cleanFields` com `form.noValidate = true`.
+  **Plano em fases:** (1) usuário cria pra si — feito aqui; (2) professor cria pro aluno (gravar em
+  `exercises` do aluno com a mesma estrutura, via controle otimista como `writeStudentPlan`);
+  (3) levar pra bateria (`RUDIMENTS` no lugar de `EXERCISES`, tabelas `drum_`) depois do usuário
+  experimentar aqui. Ainda não visto no navegador: a visão do professor com exercício de aluno
+  (precisa de login).
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.

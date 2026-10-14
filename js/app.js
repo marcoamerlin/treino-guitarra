@@ -1,5 +1,6 @@
 import { WEEK } from './data/plans.js';
 import { EXERCISES, CATEGORIES } from './data/exercises.js';
+import { customToExercise, customList, cleanFields, makeCustomId, LIMITS } from './custom-exercises.js';
 import { CHORDS, chordCol } from './data/chords.js';
 import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
@@ -67,7 +68,10 @@ let pageRedrawers = [];   // atualizações de tela dependentes do metrônomo (p
 let sheetRedrawers = [];  // idem, para a folha aberta
 let sheetCleanups = [];   // o que a folha aberta precisa soltar ao fechar (ex.: microfone do afinador)
 
-const currentPlan = (day) => store.getPlan(day.key, day.plan).filter((item) => EXERCISES[item.ex]);
+// Exercício do banco ou criado pelo usuário (custom-exercises.js); null se o id não existe mais
+// (ex.: um exercício criado que foi apagado — o item some do plano junto).
+const exerciseOf = (id) => EXERCISES[id] || customToExercise(store.getCustomExercises()[id]);
+const currentPlan = (day) => store.getPlan(day.key, day.plan).filter((item) => exerciseOf(item.ex));
 
 function updatePlan(day, mutate) {
   const items = currentPlan(day);
@@ -795,6 +799,11 @@ function studentPlanView(student) {
   let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
   let items = [];
 
+  // Exercício do banco ou um que o ALUNO criou (vem junto em studentData.exercises): sem isto o
+  // professor veria o código "meu_xxxx" no lugar do título, e o histórico esconderia o exercício.
+  const lookup = (id) => EXERCISES[id]
+    || customToExercise(studentData && studentData.exercises && studentData.exercises[id]);
+
   // Dias concluídos (do quanto tinha no plano daquele dia) + observações do aluno, num período
   // escolhido pelo professor (padrão: semana atual). Cada dia expande ao tocar, mostrando
   // exercício a exercício: concluído ou não, e em qual BPM.
@@ -817,11 +826,11 @@ function studentPlanView(student) {
       const planIds = planItems.map((item) => item.ex);
       const loggedIds = new Set([...Object.keys((log && log.done) || {}), ...Object.keys((log && log.t) || {})]);
       planIds.forEach((id) => loggedIds.delete(id)); // já entram pela ordem do plano
-      const ids = [...planIds, ...loggedIds].filter((id) => EXERCISES[id]);
+      const ids = [...planIds, ...loggedIds].filter((id) => lookup(id));
 
       if (!ids.length) { detail.appendChild(el('p', 'tip', 'Nenhum exercício planejado nem registrado nesse dia.')); return detail; }
       ids.forEach((id) => {
-        const ex = EXERCISES[id];
+        const ex = lookup(id);
         const touched = Boolean(log && log.t && log.t[id] != null);
         const done = Boolean(log && log.done && log.done[id]);
         const known = touched || (hasSnapshot && planIds.includes(id)); // sabemos o status de verdade
@@ -866,7 +875,7 @@ function studentPlanView(student) {
         const hasSnapshot = log && Array.isArray(log.plan);
         const custom = studentData.plans && studentData.plans[day.key];
         const planItems = (hasSnapshot ? log.plan : (custom && Array.isArray(custom.items) ? custom.items : day.plan))
-          .filter((item) => EXERCISES[item.ex]);
+          .filter((item) => lookup(item.ex));
         const doneCount = log ? planItems.filter((item) => log.done && log.done[item.ex]).length : 0;
         const allDone = planItems.length > 0 && doneCount === planItems.length;
         const isOpen = openDates.has(dateStr);
@@ -910,7 +919,7 @@ function studentPlanView(student) {
     }
     const list = el('div', 'chip-row');
     ids.forEach((id) => {
-      const ex = EXERCISES[id];
+      const ex = lookup(id);
       const speed = speeds[id];
       const streak = speed.clean ? ` · ${speed.clean} limpo(s) seguido(s)` : speed.errors ? ` · ${speed.errors} erro(s) seguido(s)` : '';
       list.appendChild(el('span', 'chip', `${ex ? ex.title : id} · ${speed.bpm} BPM${streak}`));
@@ -940,7 +949,7 @@ function studentPlanView(student) {
     const list = el('div');
     if (!items.length) list.appendChild(el('p', 'empty', 'Dia vazio.'));
     items.forEach((item, i) => {
-      const ex = EXERCISES[item.ex];
+      const ex = lookup(item.ex);
       const row = el('div', 'bank-item');
       row.innerHTML =
         `<div class="bi-title">${ex ? ex.title : item.ex}</div>` +
@@ -1362,6 +1371,25 @@ function exerciseBody(id, ex, item, tkey, canRun) {
 
   body.appendChild(timerBox(tkey, item.min, canRun));
 
+  if (ex.custom) {
+    // Exercício criado pelo usuário: o texto vem dele, então entra por textContent, nunca como HTML.
+    if (ex.text) {
+      const text = el('div', 'custom-text');
+      text.textContent = ex.text;
+      body.appendChild(text);
+    }
+    const actions = el('div', 'day-actions');
+    const edit = el('button', 'action', '✎ Editar exercício');
+    edit.addEventListener('click', () => {
+      openSheet(exerciseFormView({
+        existing: store.getCustomExercises()[ex.id],
+        onSaved: () => { closeSheet(); render(); },
+      }));
+    });
+    actions.appendChild(edit);
+    body.appendChild(actions);
+  }
+
   if (ex.steps && ex.steps.length) {
     body.appendChild(el('ol', 'steps', ex.steps.map((s) => `<li>${s}</li>`).join('')));
   }
@@ -1407,7 +1435,7 @@ function exerciseBody(id, ex, item, tkey, canRun) {
 }
 
 function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
-  const ex = EXERCISES[item.ex];
+  const ex = exerciseOf(item.ex);
   const done = Boolean(log.done[item.ex]);
   const open = Boolean(openIds[item.ex]);
 
@@ -1482,6 +1510,54 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
   return card;
 }
 
+// ---- Criar / editar exercício próprio ----------------------------------------------
+
+// Só texto por enquanto (pedido de 2026-10-14): título, instruções e minutos. `existing` é o
+// registro guardado (para editar); onSaved(id, exercício) deixa quem abriu decidir o que fazer.
+function exerciseFormView({ existing = null, onSaved }) {
+  const root = el('div');
+  root.innerHTML =
+    `<h2>${existing ? 'Editar exercício' : 'Criar exercício'}</h2>` +
+    '<div class="sub">Só texto por enquanto: escreva o que praticar e como.</div>' +
+    '<form class="account-form exercise-form">' +
+      `<label>Título<input type="text" name="title" maxlength="${LIMITS.title}" autocomplete="off" required></label>` +
+      `<label>Instruções (opcional)<textarea class="notes" name="text" rows="7" maxlength="${LIMITS.text}" ` +
+        'placeholder="Ex.: escala de Lá menor subindo e descendo, devagar, com metrônomo. Atenção na palhetada alternada."></textarea></label>' +
+      `<label>Minutos<input type="number" name="min" inputmode="numeric" min="${LIMITS.minMin}" max="${LIMITS.maxMin}"></label>` +
+      '<button class="action primary" type="submit">Salvar</button>' +
+      '<p class="form-error" role="alert"></p>' +
+    '</form>' +
+    (existing ? '<div class="day-actions"><button class="action danger" type="button" data-delete>Apagar exercício</button></div>' : '');
+
+  const form = root.querySelector('form');
+  const fields = form.elements;
+  // value por propriedade, nunca dentro do innerHTML: o texto é do usuário e pode ter aspas e "<"
+  fields.title.value = existing ? existing.title : '';
+  fields.text.value = existing ? existing.text || '' : '';
+  fields.min.value = existing ? existing.min : LIMITS.defaultMin;
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const result = cleanFields({ title: fields.title.value, text: fields.text.value, min: fields.min.value });
+    if (!result.ok) { form.querySelector('.form-error').textContent = result.error; return; }
+    const id = existing ? existing.id : makeCustomId();
+    store.saveCustomExercise(id, result.value);
+    onSaved(id, customToExercise(store.getCustomExercises()[id]));
+  });
+
+  const del = root.querySelector('[data-delete]');
+  if (del) {
+    del.addEventListener('click', () => {
+      if (!window.confirm(`Apagar “${existing.title}”? Ele sai de todos os dias em que estiver.`)) return;
+      store.deleteCustomExercise(existing.id);
+      closeSheet();
+      render();
+      toast('Exercício apagado.');
+    });
+  }
+  return root;
+}
+
 // ---- Banco de exercícios ---------------------------------------------------------
 
 function bankView(day, mode, index) {
@@ -1494,16 +1570,35 @@ function bankView(day, mode, index) {
   root.innerHTML =
     `<h2>${mode === 'swap' ? 'Trocar exercício' : 'Adicionar exercício'}</h2>` +
     '<div class="sub">Banco de exercícios. Toque em um para escolher.</div>' +
+    '<button class="action" data-create>+ Criar exercício</button>' +
     '<div class="chip-row cat-row"></div><div class="bank-list"></div>';
   const catRow = root.querySelector('.cat-row');
   const list = root.querySelector('.bank-list');
 
+  const pick = (id, ex) => {
+    closeSheet();
+    openIds[id] = true;
+    updatePlan(day, (items) => {
+      if (mode === 'swap') items[index] = { ex: id, min: ex.min };
+      else items.push({ ex: id, min: ex.min });
+    });
+  };
+
+  // Criar já usa: o exercício novo entra no dia (ou no lugar do que está sendo trocado), igual a
+  // escolher um do banco.
+  root.querySelector('[data-create]').addEventListener('click', () => {
+    openSheet(exerciseFormView({ onSaved: (id, ex) => pick(id, ex) }));
+  });
+
   const drawList = () => {
     catRow.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.cat === filter));
     list.innerHTML = '';
-    Object.entries(EXERCISES)
-      .filter(([, ex]) => filter === 'todos' || ex.cat === filter)
-      .forEach(([id, ex]) => {
+    const entries = [...Object.entries(EXERCISES), ...customList(store.getCustomExercises()).map((ex) => [ex.id, ex])]
+      .filter(([, ex]) => filter === 'todos' || ex.cat === filter);
+    if (!entries.length && filter === 'meus') {
+      list.appendChild(el('p', 'empty', 'Você ainda não criou nenhum exercício. Toque em “+ Criar exercício”.'));
+    }
+    entries.forEach(([id, ex]) => {
         const disabled = inPlan.has(id);
         const item = el('button', `bank-item${disabled ? ' disabled' : ''}`);
         item.disabled = disabled;
@@ -1512,15 +1607,9 @@ function bankView(day, mode, index) {
           `<div class="bi-meta">${CATEGORIES[ex.cat]} · ${ex.min} min${ex.bpm ? ' · metrônomo' : ''}${ex.draft ? ' · resumo' : ''}</div>` +
           `<div class="bi-sub"></div>${disabled ? `<div class="bi-flag">${id === current ? 'atual' : 'já no plano'}</div>` : ''}`;
         item.querySelector('.bi-title').textContent = ex.title;
-        item.querySelector('.bi-sub').textContent = ex.subtitle || '';
-        item.addEventListener('click', () => {
-          closeSheet();
-          openIds[id] = true;
-          updatePlan(day, (items) => {
-            if (mode === 'swap') items[index] = { ex: id, min: ex.min };
-            else items.push({ ex: id, min: ex.min });
-          });
-        });
+        // exercício criado não tem subtítulo: mostra a 1ª linha das instruções
+        item.querySelector('.bi-sub').textContent = ex.subtitle || (ex.custom ? ex.text.split('\n')[0].slice(0, 90) : '');
+        item.addEventListener('click', () => pick(id, ex));
         list.appendChild(item);
       });
   };
@@ -1568,7 +1657,7 @@ function renderDay() {
   const plan = currentPlan(day);
   const log = store.getLog(dateStr, day.key);
   const total = plan.reduce((sum, item) => sum + item.min, 0);
-  const drafts = plan.filter((item) => EXERCISES[item.ex].draft).length;
+  const drafts = plan.filter((item) => exerciseOf(item.ex).draft).length;
   const custom = store.isCustomPlan(day.key);
   const hasLocked = plan.some((item) => item.locked);
 
