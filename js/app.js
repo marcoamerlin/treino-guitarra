@@ -1524,6 +1524,11 @@ function exerciseFormView({ existing = null, onSaved, onDeleted = null }) {
       `<label>Instruções (opcional)<textarea class="notes" name="text" rows="7" maxlength="${LIMITS.text}" ` +
         'placeholder="Ex.: escala de Lá menor subindo e descendo, devagar, com metrônomo. Atenção na palhetada alternada."></textarea></label>' +
       `<label>Minutos<input type="number" name="min" inputmode="numeric" min="${LIMITS.minMin}" max="${LIMITS.maxMin}"></label>` +
+      '<div class="sub">Metrônomo (opcional): com um BPM inicial, o exercício ganha o quadro de velocidade — ' +
+        'Limpo/Errei, +4 e −4 BPM e o metrônomo. Deixe vazio para só texto. O início vale só até você começar a praticar: ' +
+        'depois a velocidade segue o seu treino (a meta pode mudar a qualquer hora).</div>' +
+      `<label>BPM inicial<input type="number" name="bpmStart" inputmode="numeric" min="${LIMITS.minBpm}" max="${LIMITS.maxBpm}"></label>` +
+      `<label>BPM meta (opcional)<input type="number" name="bpmGoal" inputmode="numeric" min="${LIMITS.minBpm}" max="${LIMITS.maxBpm}"></label>` +
       '<button class="action primary" type="submit">Salvar</button>' +
       '<p class="form-error" role="alert"></p>' +
     '</form>' +
@@ -1535,10 +1540,15 @@ function exerciseFormView({ existing = null, onSaved, onDeleted = null }) {
   fields.title.value = existing ? existing.title : '';
   fields.text.value = existing ? existing.text || '' : '';
   fields.min.value = existing ? existing.min : LIMITS.defaultMin;
+  fields.bpmStart.value = existing && existing.bpm ? existing.bpm.start : '';
+  fields.bpmGoal.value = existing && existing.bpm ? existing.bpm.goal : '';
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    const result = cleanFields({ title: fields.title.value, text: fields.text.value, min: fields.min.value });
+    const result = cleanFields({
+      title: fields.title.value, text: fields.text.value, min: fields.min.value,
+      bpmStart: fields.bpmStart.value, bpmGoal: fields.bpmGoal.value,
+    });
     if (!result.ok) { form.querySelector('.form-error').textContent = result.error; return; }
     const id = existing ? existing.id : makeCustomId();
     store.saveCustomExercise(id, result.value);

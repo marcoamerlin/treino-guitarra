@@ -205,6 +205,8 @@ export const store = {
       createdAt: existing && existing.createdAt ? existing.createdAt : t,
       updatedAt: t,
     };
+    // metrônomo opcional; editar e apagar o BPM tira a chave (o registro novo substitui o velho)
+    if (fields.bpm) data.exercises[id].bpm = { start: fields.bpm.start, goal: fields.bpm.goal };
     save();
     return id;
   },

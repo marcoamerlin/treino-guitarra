@@ -2,13 +2,16 @@
 // instruções e minutos. Funções puras (sem navegador), testadas em tests/custom-exercises.test.mjs.
 //
 // Guardados em data.exercises (store.js), um registro por id:
-//   { id, title, text, min, createdAt, updatedAt }          — exercício
+//   { id, title, text, min, bpm?, createdAt, updatedAt }    — exercício (bpm: {start, goal}, opcional)
 //   { id, deleted: true, updatedAt }                        — apagado (fica como "lápide")
 // A lápide é o que faz o apagar sincronizar: se só sumisse da lista, o outro aparelho ainda teria
 // o exercício e o merge (merge.js, vale o updatedAt mais novo por id) o traria de volta.
 
 export const CUSTOM_CAT = 'meus';
-export const LIMITS = { title: 80, text: 2000, minMin: 5, maxMin: 90, defaultMin: 10 };
+export const LIMITS = {
+  title: 80, text: 2000, minMin: 5, maxMin: 90, defaultMin: 10,
+  minBpm: 30, maxBpm: 240, goalGap: 30, // mesma faixa da barra de BPM do app; meta padrão = início + 30
+};
 
 // Único entre aparelhos sem combinar nada: o carimbo de tempo mais um pedaço aleatório.
 // O prefixo "meu_" não colide com nenhum id do banco de exercícios do app.
@@ -22,7 +25,11 @@ export const isCustomId = (id) => typeof id === 'string' && id.startsWith('meu_'
 // Limpa e valida o que veio do formulário. Só o título é obrigatório (um exercício como "Estudar
 // aquela música" não precisa de instruções). Os minutos seguem o mesmo limite de 5 a 90 do resto
 // do app e, se vierem vazios ou inválidos, usam o padrão em vez de recusar.
-export function cleanFields({ title, text, min } = {}) {
+//
+// Metrônomo é opcional: só um "BPM inicial" preenchido liga o quadro de velocidade (o mesmo dos
+// exercícios do banco). Sem ele, o exercício segue só texto e a chave `bpm` nem existe. A meta,
+// se vier vazia, é início + 30; nunca fica abaixo do início.
+export function cleanFields({ title, text, min, bpmStart, bpmGoal } = {}) {
   const cleanTitle = String(title ?? '').trim().slice(0, LIMITS.title);
   if (!cleanTitle) return { ok: false, error: 'Dê um título ao exercício.' };
   const cleanText = String(text ?? '').trim().slice(0, LIMITS.text);
@@ -30,7 +37,20 @@ export function cleanFields({ title, text, min } = {}) {
   const cleanMin = Number.isFinite(raw) && String(min ?? '').trim() !== ''
     ? Math.min(LIMITS.maxMin, Math.max(LIMITS.minMin, raw))
     : LIMITS.defaultMin;
-  return { ok: true, value: { title: cleanTitle, text: cleanText, min: cleanMin } };
+  const value = { title: cleanTitle, text: cleanText, min: cleanMin };
+  const bpm = cleanBpm(bpmStart, bpmGoal);
+  if (bpm) value.bpm = bpm;
+  return { ok: true, value };
+}
+
+const inBpmRange = (n) => Math.min(LIMITS.maxBpm, Math.max(LIMITS.minBpm, n));
+const typed = (v) => String(v ?? '').trim() !== '' && Number.isFinite(Math.round(Number(v)));
+
+function cleanBpm(start, goal) {
+  if (!typed(start)) return null;
+  const s = inBpmRange(Math.round(Number(start)));
+  const g = typed(goal) ? Math.max(s, inBpmRange(Math.round(Number(goal)))) : Math.min(LIMITS.maxBpm, s + LIMITS.goalGap);
+  return { start: s, goal: g };
 }
 
 // Registro guardado -> o formato que as telas já usam para os exercícios do banco (id, title,
@@ -38,7 +58,7 @@ export function cleanFields({ title, text, min } = {}) {
 // existe mais", igual a um id desconhecido.
 export function customToExercise(record) {
   if (!record || record.deleted || !record.title) return null;
-  return {
+  const ex = {
     id: record.id,
     title: record.title,
     subtitle: '',
@@ -47,6 +67,10 @@ export function customToExercise(record) {
     text: record.text || '',
     custom: true,
   };
+  // Registro vindo de outro aparelho/professor não é confiável: só vale com os dois números certos.
+  const b = record.bpm;
+  if (b && Number.isFinite(b.start) && Number.isFinite(b.goal)) ex.bpm = { start: b.start, goal: b.goal };
+  return ex;
 }
 
 // Todos os exercícios criados e não apagados, em ordem alfabética (pra lista do banco).

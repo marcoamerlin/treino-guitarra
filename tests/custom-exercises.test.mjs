@@ -52,6 +52,36 @@ test('customToExercise: no formato das telas; registro apagado ou ausente vira n
   assert.equal(customToExercise(undefined), null);
 });
 
+test('cleanFields: metrônomo é opcional — sem BPM inicial a chave bpm nem existe', () => {
+  assert.equal('bpm' in cleanFields({ title: 'x' }).value, false);
+  assert.equal('bpm' in cleanFields({ title: 'x', bpmStart: '', bpmGoal: '120' }).value, false); // meta sozinha não liga
+  assert.equal('bpm' in cleanFields({ title: 'x', bpmStart: '  ' }).value, false);
+});
+
+test('cleanFields: BPM inicial liga o metrônomo; meta vazia = início + 30; nunca abaixo do início', () => {
+  const bpm = (start, goal) => cleanFields({ title: 'x', bpmStart: start, bpmGoal: goal }).value.bpm;
+  assert.deepEqual(bpm('60', '100'), { start: 60, goal: 100 });
+  assert.deepEqual(bpm('60', ''), { start: 60, goal: 90 });
+  assert.deepEqual(bpm(60, undefined), { start: 60, goal: 90 });
+  assert.deepEqual(bpm('80', '50'), { start: 80, goal: 80 }); // meta menor que o início sobe até ele
+  assert.deepEqual(bpm('72.6', '100.2'), { start: 73, goal: 100 });
+});
+
+test('cleanFields: BPM fora da faixa do app (30 a 240) é ajustado', () => {
+  const bpm = (start, goal) => cleanFields({ title: 'x', bpmStart: start, bpmGoal: goal }).value.bpm;
+  assert.deepEqual(bpm('5', '10'), { start: LIMITS.minBpm, goal: LIMITS.minBpm });
+  assert.deepEqual(bpm('999', '9999'), { start: LIMITS.maxBpm, goal: LIMITS.maxBpm });
+  assert.deepEqual(bpm('230', ''), { start: 230, goal: LIMITS.maxBpm }); // início + 30 passaria de 240
+});
+
+test('customToExercise: leva o bpm (formato do banco) e ignora bpm quebrado vindo de fora', () => {
+  const rec = { id: 'meu_a', title: 'Meu', min: 10, bpm: { start: 60, goal: 90 } };
+  assert.deepEqual(customToExercise(rec).bpm, { start: 60, goal: 90 });
+  assert.equal('bpm' in customToExercise({ ...rec, bpm: { start: 'x', goal: null } }), false);
+  assert.equal('bpm' in customToExercise({ ...rec, bpm: 'lixo' }), false);
+  assert.equal('bpm' in customToExercise({ id: 'meu_b', title: 'Sem', min: 10 }), false);
+});
+
 test('customList: ordem alfabética (pt-BR), sem os apagados', () => {
   const list = customList({
     a: { id: 'a', title: 'Zebra', min: 10 },
@@ -98,4 +128,15 @@ test('store: applyRemote traz os exercícios criados em outro aparelho', () => {
   });
   assert.equal(customToExercise(store.getCustomExercises().meu_x).title, 'De outro aparelho');
   assert.equal(store.snapshot().exercises.meu_x.title, 'De outro aparelho');
+});
+
+test('store: guarda o bpm; editar sem bpm tira o metrônomo do exercício', () => {
+  const id = makeCustomId();
+  store.saveCustomExercise(id, { title: 'Com metrônomo', text: '', min: 10, bpm: { start: 60, goal: 100 } });
+  assert.deepEqual(store.getCustomExercises()[id].bpm, { start: 60, goal: 100 });
+  assert.deepEqual(customToExercise(store.getCustomExercises()[id]).bpm, { start: 60, goal: 100 });
+  assert.deepEqual(store.snapshot().exercises[id].bpm, { start: 60, goal: 100 });
+
+  store.saveCustomExercise(id, { title: 'Só texto agora', text: '', min: 10 });
+  assert.equal('bpm' in store.getCustomExercises()[id], false);
 });

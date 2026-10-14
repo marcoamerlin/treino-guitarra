@@ -297,8 +297,17 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   fora do limite viram 5), persistência após recarregar, filtro do banco + "já no plano", apagar
   (cancelar mantém) e layout no celular. Cuidado de teste: `requestSubmit()` respeita o `min` do
   campo, então valor fora do limite só chega no `cleanFields` com `form.noValidate = true`.
-  **Plano em fases:** (1) usuário cria pra si — feito aqui; (2) professor cria pro aluno (gravar em
-  `exercises` do aluno com a mesma estrutura, via controle otimista como `writeStudentPlan`);
+  **Metrônomo opcional** (pedido do usuário, 2026-10-14, "fase 2" parte 1): dois campos no formulário,
+  "BPM inicial" e "BPM meta". Só o inicial preenchido liga: o registro ganha `bpm: {start, goal}` e
+  `customToExercise` devolve `ex.bpm` no mesmo formato do banco — por isso `speedBox`, o "metrônomo"
+  da lista, a barra de BPM e a visão do professor (`ex.bpm`) funcionam sem código novo. Meta vazia =
+  início + 30; meta nunca abaixo do início; faixa 30–240 (`LIMITS`). Sem inicial a chave `bpm` nem
+  existe (editar e esvaziar tira o quadro). O BPM em uso mora em `speeds[id]` como nos outros, então
+  mudar o "início" depois de já ter praticado NÃO mexe na velocidade atual (o formulário avisa); a
+  meta pode mudar sempre. `customToExercise` ignora `bpm` malformado vindo de outro aparelho.
+  **Plano em fases:** (1) usuário cria pra si — feito; (1b) BPM/metrônomo — feito; (1c) **tablatura**
+  (digitar a notação curta de `tab-dsl.js` e ouvir) — ainda não; (2) professor cria pro aluno (gravar
+  em `exercises` do aluno com a mesma estrutura, via controle otimista como `writeStudentPlan`);
   (3) levar pra bateria (`RUDIMENTS` no lugar de `EXERCISES`, tabelas `drum_`) depois do usuário
   experimentar aqui. Ainda não visto no navegador: a visão do professor com exercício de aluno
   (precisa de login).
