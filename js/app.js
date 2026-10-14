@@ -1514,7 +1514,7 @@ function exerciseCard(day, item, index, plan, log, canCheck, dateStr) {
 
 // Só texto por enquanto (pedido de 2026-10-14): título, instruções e minutos. `existing` é o
 // registro guardado (para editar); onSaved(id, exercício) deixa quem abriu decidir o que fazer.
-function exerciseFormView({ existing = null, onSaved }) {
+function exerciseFormView({ existing = null, onSaved, onDeleted = null }) {
   const root = el('div');
   root.innerHTML =
     `<h2>${existing ? 'Editar exercício' : 'Criar exercício'}</h2>` +
@@ -1550,11 +1550,71 @@ function exerciseFormView({ existing = null, onSaved }) {
     del.addEventListener('click', () => {
       if (!window.confirm(`Apagar “${existing.title}”? Ele sai de todos os dias em que estiver.`)) return;
       store.deleteCustomExercise(existing.id);
-      closeSheet();
       render();
       toast('Exercício apagado.');
+      if (onDeleted) onDeleted(); else closeSheet();
     });
   }
+  return root;
+}
+
+// ---- Biblioteca de exercícios (fora de qualquer dia) -----------------------------------
+
+// Botão do cabeçalho: lista tudo, cria um novo e edita/apaga só os que o usuário criou (os prontos
+// são do app e não mudam). Criar aqui não põe o exercício em nenhum dia — isso é em "Editar dia".
+function libraryView(startFilter = 'todos') {
+  let filter = startFilter;
+  const root = el('div');
+  root.innerHTML =
+    '<h2>Exercícios</h2>' +
+    '<div class="sub">Os seus aparecem primeiro: toque num deles para editar. Os prontos não mudam.</div>' +
+    '<button class="action" data-create>+ Criar exercício</button>' +
+    '<div class="chip-row cat-row"></div><div class="bank-list"></div>';
+  const catRow = root.querySelector('.cat-row');
+  const list = root.querySelector('.bank-list');
+  const back = (f) => () => openSheet(libraryView(f));
+
+  const openForm = (existing) => openSheet(exerciseFormView({
+    existing,
+    onSaved: () => {
+      render();
+      toast(existing ? 'Exercício salvo.' : 'Exercício criado. Para treinar, adicione ao dia em “Editar dia”.');
+      openSheet(libraryView('meus'));
+    },
+    onDeleted: back(filter),
+  }));
+  root.querySelector('[data-create]').addEventListener('click', () => openForm(null));
+
+  const drawList = () => {
+    catRow.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.cat === filter));
+    list.innerHTML = '';
+    const mine = customList(store.getCustomExercises());
+    const ready = Object.values(EXERCISES);
+    const entries = [...mine, ...ready].filter((ex) => filter === 'todos' || ex.cat === filter);
+    if (!entries.length && filter === 'meus') {
+      list.appendChild(el('p', 'empty', 'Você ainda não criou nenhum exercício. Toque em “+ Criar exercício”.'));
+    }
+    entries.forEach((ex) => {
+      const item = el('button', `bank-item${ex.custom ? '' : ' disabled'}`);
+      item.disabled = !ex.custom;
+      item.innerHTML =
+        '<div class="bi-title"></div>' +
+        `<div class="bi-meta">${CATEGORIES[ex.cat]} · ${ex.min} min</div>` +
+        `<div class="bi-sub"></div><div class="bi-flag">${ex.custom ? '✎ editar' : 'pronto'}</div>`;
+      item.querySelector('.bi-title').textContent = ex.title;
+      item.querySelector('.bi-sub').textContent = ex.subtitle || (ex.custom ? (ex.text || '').split('\n')[0].slice(0, 90) : '');
+      if (ex.custom) item.addEventListener('click', () => openForm(store.getCustomExercises()[ex.id]));
+      list.appendChild(item);
+    });
+  };
+
+  [['todos', 'Todos'], ...Object.entries(CATEGORIES)].forEach(([key, label]) => {
+    const chip = el('button', 'chip', label);
+    chip.dataset.cat = key;
+    chip.addEventListener('click', () => { filter = key; drawList(); });
+    catRow.appendChild(chip);
+  });
+  drawList();
   return root;
 }
 
@@ -1799,6 +1859,7 @@ store.onRemoteChange(() => {
 
 $('#metroBtn').addEventListener('click', () => openSheet(metronomeView()));
 $('#tunerBtn').addEventListener('click', () => openSheet(tunerView()));
+$('#libraryBtn').addEventListener('click', () => openSheet(libraryView()));
 $('#syncBtn').addEventListener('click', () => openSheet(accountView()));
 $('#teacherBtn').addEventListener('click', () => openSheet(myStudentsView()));
 render();

@@ -283,6 +283,11 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   `exerciseOf(id)` em app.js é o lookup único (banco fixo, depois os do usuário); `currentPlan` descarta
   ids que não existem mais, então apagar tira o exercício de todos os dias sem mexer nos planos. Na
   visão do professor (`studentPlanView`) o `lookup` lê `studentData.exercises`, pra ele ver o título.
+  **Biblioteca** (pedido do usuário, 2026-10-14, depois de ele não achar o botão no dia): botão
+  "📚 Exercícios" no cabeçalho (`#libraryBtn`, ao lado de Braço/Afinador) abre `libraryView()`, uma
+  lista fora de qualquer dia — os exercícios criados primeiro (tocar abre a edição, com Apagar), os
+  37 prontos depois, travados e marcados "pronto" (são do app, não editam). Criar ali NÃO põe em dia
+  nenhum (avisa pra usar "Editar dia"); `exerciseFormView` ganhou `onDeleted` pra voltar à lista.
   UI: `+ Criar exercício` na tela do dia, sempre visível ao lado de "Editar dia" (achado real: a 1ª
   versão só tinha o botão dentro de Editar dia → Adicionar, e o usuário não achou), e também no topo
   do banco (nos dois casos já adiciona ao dia; no banco em modo Trocar, substitui o item), categoria "Meus
