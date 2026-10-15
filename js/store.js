@@ -210,6 +210,17 @@ export const store = {
     save();
     return id;
   },
+  // Observação do aluno num exercício que veio do professor (campo à parte: o conteúdo do
+  // professor o aluno não edita, só anota). Vazia some do registro. Mexe só no registro que já
+  // existe; apagado ou inexistente não volta.
+  setCustomNote(id, text, max = 1000) {
+    const rec = data.exercises[id];
+    if (!rec || rec.deleted) return;
+    const clean = String(text ?? '').trim().slice(0, max);
+    if (clean) rec.note = clean; else delete rec.note;
+    rec.updatedAt = now();
+    save();
+  },
   // Lápide, não remoção: ver custom-exercises.js. Some do plano porque o id deixa de existir.
   deleteCustomExercise(id) {
     data.exercises[id] = { id, deleted: true, updatedAt: now() };

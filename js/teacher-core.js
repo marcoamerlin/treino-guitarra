@@ -6,6 +6,8 @@
 // Tabelas (ver supabase/schema.sql): teacher_codes (1 por professor) e teacher_links (1 por
 // aluno — cada aluno só tem 1 professor por vez). O vínculo nasce do aluno, digitando o código.
 
+import { cleanFields, isCustomId } from './custom-exercises.js';
+
 const MAX_ATTEMPTS = 4;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O/1/I, pra não confundir no dedo
 const MIN_BPM = 30;
@@ -101,15 +103,42 @@ function cleanItem(item) {
   return text ? { ...rest, note: text, locked: true } : { ...rest, locked: true };
 }
 
-export async function writeStudentPlan(client, studentId, dayKey, items) {
+// `exercises` (opcional): cópias de exercícios do professor entregues ao aluno (pedido do usuário,
+// 2026-10-15), gravadas na MESMA escrita do plano — assim o plano nunca aponta pra um exercício que
+// ainda não chegou. O aluno não edita o conteúdo (só anota, em `note`), então a cópia é do professor
+// no conteúdo e do aluno nas observações. Só entra id que o aluno ainda não tem (a lápide também
+// conta); cada registro é re-limpo aqui com os mesmos limites do formulário, o que não passar é
+// descartado, e `note` nunca vem do professor.
+function cleanCopies(exercises, now) {
+  const out = {};
+  Object.entries(exercises || {}).forEach(([id, rec]) => {
+    if (!isCustomId(id) || !rec) return;
+    const r = cleanFields({
+      title: rec.title, text: rec.text, min: rec.min,
+      bpmStart: rec.bpm && rec.bpm.start, bpmGoal: rec.bpm && rec.bpm.goal,
+    });
+    if (!r.ok) return;
+    out[id] = {
+      id, ...r.value,
+      ...(typeof rec.src === 'string' && rec.src ? { src: rec.src.slice(0, 60) } : {}),
+      createdAt: now, updatedAt: now,
+    };
+  });
+  return out;
+}
+
+export async function writeStudentPlan(client, studentId, dayKey, items, exercises = {}) {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const { data: row, error } = await client
       .from('user_data').select('data, rev').eq('user_id', studentId).maybeSingle();
     if (error) throw error;
 
-    const plan = { items: items.map(cleanItem), updatedAt: Date.now() };
+    const now = Date.now();
+    const plan = { items: items.map(cleanItem), updatedAt: now };
+    const copies = cleanCopies(exercises, now);
     if (!row) {
       const fresh = { logs: {}, speeds: {}, plans: { [dayKey]: plan } };
+      if (Object.keys(copies).length) fresh.exercises = copies;
       const { error: insertError } = await client
         .from('user_data').insert({ user_id: studentId, data: fresh, rev: 1 });
       if (!insertError) return;
@@ -118,6 +147,9 @@ export async function writeStudentPlan(client, studentId, dayKey, items) {
     }
 
     const nextData = { ...row.data, plans: { ...(row.data.plans || {}), [dayKey]: plan } };
+    const have = row.data.exercises || {};
+    const added = Object.fromEntries(Object.entries(copies).filter(([id]) => !have[id]));
+    if (Object.keys(added).length) nextData.exercises = { ...have, ...added };
     const { data: updated, error: updateError } = await client
       .from('user_data')
       .update({ data: nextData, rev: row.rev + 1, updated_at: new Date().toISOString() })

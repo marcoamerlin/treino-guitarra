@@ -305,12 +305,39 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   existe (editar e esvaziar tira o quadro). O BPM em uso mora em `speeds[id]` como nos outros, então
   mudar o "início" depois de já ter praticado NÃO mexe na velocidade atual (o formulário avisa); a
   meta pode mudar sempre. `customToExercise` ignora `bpm` malformado vindo de outro aparelho.
-  **Plano em fases:** (1) usuário cria pra si — feito; (1b) BPM/metrônomo — feito; (1c) **tablatura**
-  (digitar a notação curta de `tab-dsl.js` e ouvir) — ainda não; (2) professor cria pro aluno (gravar
-  em `exercises` do aluno com a mesma estrutura, via controle otimista como `writeStudentPlan`);
-  (3) levar pra bateria (`RUDIMENTS` no lugar de `EXERCISES`, tabelas `drum_`) depois do usuário
-  experimentar aqui. Ainda não visto no navegador: a visão do professor com exercício de aluno
-  (precisa de login).
+  **Professor atribui exercício ao aluno** (pedido do usuário, 2026-10-15): o professor cria na própria
+  biblioteca (📚 Exercícios) e, em "Planejar a semana" → "+ Adicionar exercício" (`pickExerciseView`),
+  vê os dele antes dos prontos, com "+ Criar exercício" ali mesmo. Escolher um exercício dele entrega ao
+  aluno uma **cópia** (`makeStudentCopy`: id novo, conteúdo igual, `src` = id do original), e o item do
+  plano aponta pra cópia, nunca pro original (o aluno não lê a linha do professor). `writeStudentPlan`
+  ganhou o 5º parâmetro `exercises` e grava as cópias NA MESMA escrita do plano (controle otimista),
+  então o plano nunca referencia um exercício que ainda não chegou. `cleanCopies` re-limpa cada registro
+  com `cleanFields` (id tem que começar com `meu_`, senão poderia ocupar o lugar de um exercício do
+  banco; título vazio é descartado; `note` nunca vem do professor) e só adiciona ids que o aluno ainda
+  NÃO tem — nunca sobrescreve nem ressuscita lápide. Em app.js, `pending` guarda as cópias escolhidas
+  e ainda não salvas; `copyFor(ex)` reaproveita uma cópia que o aluno já tenha (`findCopyOf` por `src`),
+  então atribuir o mesmo exercício de novo (outro dia, por exemplo) não duplica nem reenvia.
+  **O aluno não edita nem apaga o que veio do professor** (`ex.fromTeacher`, vem de `src`): sem botão
+  "Editar exercício" no cartão e travado na biblioteca ("🎓 do professor"). No lugar, o cartão tem
+  "MINHAS OBSERVAÇÕES" (`record.note`, máx. 1000, `store.setCustomNote`, grava a cada letra, vazia some),
+  e o professor lê isso na linha do plano do aluno ("📝 Aluno: …"). Decisão do usuário (primeiro pensei
+  em deixar o aluno editar; ele propôs travar e dar observações): o professor é dono do conteúdo e o
+  aluno personaliza por anotações, sem versões divergentes. Consequência prevista: como o aluno não muda
+  o conteúdo, dá pra uma correção do professor chegar a todos os alunos preservando as observações —
+  NÃO feito ainda (hoje a cópia é um retrato do momento da atribuição). Conferido com a rede trocada por
+  versões falsas no navegador (sem login real): lista, atribuir, cópia única reutilizada, 2ª gravação sem
+  reenviar, observação do aluno e layout no celular; testes de `writeStudentPlan` em `tests/teacher.test.mjs`.
+  **Achado de segurança** ao fazer isso: na tela do professor, títulos de exercício entravam via
+  `innerHTML` (`planList`, `historyBlock`, `progressBlock`, picker). Como agora o ALUNO escreve títulos,
+  um título com HTML rodaria no navegador do professor (logado, com acesso aos dados dos alunos). Corrigido
+  com `esc()` (e `textContent` no que é texto livre); vale para qualquer texto de outra pessoa.
+  **Plano em fases:** (1) usuário cria pra si — feito; (1b) BPM/metrônomo — feito; (2) professor atribui
+  ao aluno — feito (acima); (2b) atualizar a cópia quando o professor corrige o original — ainda não;
+  (1c) **tablatura** (digitar a notação curta de `tab-dsl.js` e ouvir) — ainda não; (3) levar pra
+  bateria (`RUDIMENTS` no lugar de `EXERCISES`, tabelas `drum_`) depois do usuário experimentar aqui.
+  **Não testado com login real** (professor + aluno em contas Supabase de verdade): o que vale o
+  schema/RLS atual (professor grava a linha inteira do aluno) ainda precisa do SQL rodado em produção
+  (ver Pendências).
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.

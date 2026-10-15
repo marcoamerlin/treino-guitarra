@@ -1,6 +1,8 @@
 import { WEEK } from './data/plans.js';
 import { EXERCISES, CATEGORIES } from './data/exercises.js';
-import { customToExercise, customList, cleanFields, makeCustomId, LIMITS } from './custom-exercises.js';
+import {
+  customToExercise, customList, cleanFields, makeCustomId, makeStudentCopy, findCopyOf, LIMITS,
+} from './custom-exercises.js';
 import { CHORDS, chordCol } from './data/chords.js';
 import { chordSVG } from './chord-diagram.js';
 import { buildTab } from './tab.js';
@@ -27,6 +29,10 @@ function el(tag, className, html) {
   if (html != null) node.innerHTML = html;
   return node;
 }
+
+// Para texto que vem de OUTRA pessoa (título de exercício do aluno na tela do professor) e precisa
+// entrar num trecho montado como HTML. Onde der, prefira textContent.
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const pad = (n) => String(n).padStart(2, '0');
 const isoDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -799,10 +805,26 @@ function studentPlanView(student) {
   let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
   let items = [];
 
-  // Exercício do banco ou um que o ALUNO criou (vem junto em studentData.exercises): sem isto o
-  // professor veria o código "meu_xxxx" no lugar do título, e o histórico esconderia o exercício.
+  // Cópias de exercícios do professor já escolhidas neste plano mas ainda não gravadas (a gravação
+  // acontece junto com "Salvar plano deste dia"). Ver copyFor().
+  const pending = {};
+
+  // Exercício do banco, um que o ALUNO criou ou uma cópia do professor (tudo vem em
+  // studentData.exercises; as ainda não salvas, em `pending`): sem isto o professor veria o código
+  // "meu_xxxx" no lugar do título, e o histórico esconderia o exercício.
   const lookup = (id) => EXERCISES[id]
-    || customToExercise(studentData && studentData.exercises && studentData.exercises[id]);
+    || customToExercise((studentData && studentData.exercises && studentData.exercises[id]) || pending[id]);
+
+  // Atribuir um exercício do professor a este aluno = entregar uma cópia (pedido do usuário,
+  // 2026-10-15). Se o aluno já tem uma cópia desse mesmo exercício, reaproveita (nada de duplicata
+  // nem de sobrescrever as observações dele); senão cria uma nova, guardada em `pending`.
+  const copyFor = (ex) => {
+    const have = findCopyOf(ex.id, studentData && studentData.exercises, pending);
+    if (have) return have.id;
+    const copy = makeStudentCopy(ex);
+    pending[copy.id] = copy;
+    return copy.id;
+  };
 
   // Dias concluídos (do quanto tinha no plano daquele dia) + observações do aluno, num período
   // escolhido pelo professor (padrão: semana atual). Cada dia expande ao tocar, mostrando
@@ -846,7 +868,7 @@ function studentPlanView(student) {
 
         const line = el('div', 'bank-item');
         line.innerHTML =
-          `<div class="bi-title">${mark} ${ex.title}${inPlan ? '' : ' (fora do plano desse dia)'}</div>` +
+          `<div class="bi-title">${mark} ${esc(ex.title)}${inPlan ? '' : ' (fora do plano desse dia)'}</div>` +
           `<div class="bi-meta">${status}${(touched || done) && bpm != null ? ' · ' + bpm + ' BPM' : ''}</div>`;
         detail.appendChild(line);
       });
@@ -922,7 +944,7 @@ function studentPlanView(student) {
       const ex = lookup(id);
       const speed = speeds[id];
       const streak = speed.clean ? ` · ${speed.clean} limpo(s) seguido(s)` : speed.errors ? ` · ${speed.errors} erro(s) seguido(s)` : '';
-      list.appendChild(el('span', 'chip', `${ex ? ex.title : id} · ${speed.bpm} BPM${streak}`));
+      list.appendChild(el('span', 'chip', `${esc(ex ? ex.title : id)} · ${speed.bpm} BPM${streak}`));
     });
     box.appendChild(list);
     return box;
@@ -952,8 +974,9 @@ function studentPlanView(student) {
       const ex = lookup(item.ex);
       const row = el('div', 'bank-item');
       row.innerHTML =
-        `<div class="bi-title">${ex ? ex.title : item.ex}</div>` +
+        `<div class="bi-title">${esc(ex ? ex.title : item.ex)}</div>` +
         `<div class="bi-meta">${ex ? CATEGORIES[ex.cat] : ''}</div>` +
+        '<div class="student-note"></div>' +
         '<div class="day-actions" style="margin-top:8px">' +
           '<button class="action" data-minus-min>−5 min</button>' +
           `<input class="mins-input" type="number" inputmode="numeric" min="5" max="90" value="${item.min}" aria-label="Minutos">` +
@@ -962,6 +985,14 @@ function studentPlanView(student) {
           `<button class="action" data-down${i === items.length - 1 ? ' disabled' : ''}>↓</button>` +
           '<button class="action" data-remove>Remover</button>' +
         '</div>';
+      // Observação que o ALUNO escreveu nesse exercício (vem da cópia dele): texto de outra pessoa,
+      // por textContent. Só aparece quando existe.
+      const studentNote = row.querySelector('.student-note');
+      if (ex && ex.note) {
+        studentNote.textContent = `📝 Aluno: ${ex.note}`;
+      } else {
+        studentNote.remove();
+      }
       row.querySelector('[data-minus-min]').addEventListener('click', () => {
         item.min = Math.max(5, item.min - 5);
         drawPlan();
@@ -1051,21 +1082,34 @@ function studentPlanView(student) {
     const picker = el('div');
     let filter = 'todos';
     picker.innerHTML =
-      '<h2>Adicionar exercício</h2><div class="sub">Banco de exercícios. Toque em um para escolher.</div>' +
+      '<h2>Adicionar exercício</h2>' +
+      '<div class="sub">Banco de exercícios e os seus. Ao escolher um exercício seu, o aluno recebe uma cópia: ' +
+        'o conteúdo é seu e ele só acrescenta observações.</div>' +
+      '<button class="action" data-create>+ Criar exercício</button>' +
       '<div class="chip-row cat-row"></div><div class="bank-list"></div>';
     const catRow = picker.querySelector('.cat-row');
     const list = picker.querySelector('.bank-list');
+    // Criar aqui guarda o exercício na SUA biblioteca e já o atribui a este aluno.
+    picker.querySelector('[data-create]').addEventListener('click', () => {
+      openSheet(exerciseFormView({ onSaved: (id, ex) => { closeSheet(); onPick(id, ex); } }));
+    });
     const drawList = () => {
       catRow.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c.dataset.cat === filter));
       list.innerHTML = '';
-      Object.entries(EXERCISES)
+      const mine = customList(store.getCustomExercises()).map((ex) => [ex.id, ex]);
+      if (!mine.length && filter === 'meus') {
+        list.appendChild(el('p', 'empty', 'Você ainda não criou nenhum exercício. Toque em “+ Criar exercício”.'));
+      }
+      [...mine, ...Object.entries(EXERCISES)]
         .filter(([, ex]) => filter === 'todos' || ex.cat === filter)
         .forEach(([id, ex]) => {
           const item = el('button', 'bank-item');
           item.innerHTML =
-            `<div class="bi-title">${ex.title}</div>` +
+            '<div class="bi-title"></div>' +
             `<div class="bi-meta">${CATEGORIES[ex.cat]} · ${ex.min} min${ex.bpm ? ' · metrônomo' : ''}</div>` +
-            `<div class="bi-sub">${ex.subtitle || ''}</div>`;
+            '<div class="bi-sub"></div>';
+          item.querySelector('.bi-title').textContent = ex.title;
+          item.querySelector('.bi-sub').textContent = ex.subtitle || (ex.custom ? (ex.text || '').split('\n')[0].slice(0, 90) : '');
           item.addEventListener('click', () => { closeSheet(); onPick(id, ex); });
           list.appendChild(item);
         });
@@ -1088,15 +1132,25 @@ function studentPlanView(student) {
     const actions = el('div', 'day-actions');
     const add = el('button', 'action', '+ Adicionar exercício');
     add.addEventListener('click', () => {
-      openSheet(pickExerciseView((id, ex) => { items.push({ ex: id, min: ex.min }); drawPlan(); openSheet(root); }));
+      openSheet(pickExerciseView((id, ex) => {
+        // exercício do professor: o plano do aluno aponta pra cópia dele, não pro original
+        items.push({ ex: ex.custom ? copyFor(ex) : id, min: ex.min });
+        drawPlan();
+        openSheet(root);
+      }));
     });
     const save = el('button', 'action primary', '✓ Salvar plano deste dia');
     save.addEventListener('click', async () => {
       save.disabled = true;
       try {
-        await teacher.writeStudentPlan(student.student_id, dayKey, items);
+        // As cópias ainda não entregues que este dia usa vão na mesma gravação do plano.
+        const sending = Object.fromEntries(Object.entries(pending).filter(([id]) => items.some((i) => i.ex === id)));
+        await teacher.writeStudentPlan(student.student_id, dayKey, items, sending);
         // Atualiza a cópia local: sem isso, trocar de dia e voltar recarregava o plano antigo
         // (de antes de salvar), porque loadDay() lê de studentData, buscado só 1 vez ao abrir.
+        // As cópias entregues passam de "pendentes" para "do aluno" (e não são gravadas de novo).
+        studentData.exercises = { ...(studentData.exercises || {}), ...sending };
+        Object.keys(sending).forEach((id) => { delete pending[id]; });
         studentData.plans = studentData.plans || {};
         studentData.plans[dayKey] = { items: items.map((item) => ({ ...item })), updatedAt: Date.now() };
         toast(`Plano de ${WEEK.find((d) => d.key === dayKey).label} salvo.`);
@@ -1378,16 +1432,31 @@ function exerciseBody(id, ex, item, tkey, canRun) {
       text.textContent = ex.text;
       body.appendChild(text);
     }
-    const actions = el('div', 'day-actions');
-    const edit = el('button', 'action', '✎ Editar exercício');
-    edit.addEventListener('click', () => {
-      openSheet(exerciseFormView({
-        existing: store.getCustomExercises()[ex.id],
-        onSaved: () => { closeSheet(); render(); },
-      }));
-    });
-    actions.appendChild(edit);
-    body.appendChild(actions);
+    if (ex.fromTeacher) {
+      // Veio do professor: o conteúdo é dele, o aluno não edita — acrescenta observações, num campo
+      // à parte que o professor lê na tela do plano. Grava a cada letra, como as notas do dia.
+      const mine = el('div', 'notes-block', '<span class="notes-label">MINHAS OBSERVAÇÕES</span>');
+      const area = el('textarea', 'notes');
+      area.rows = 3;
+      area.maxLength = 1000;
+      area.placeholder = 'Anote o que quiser: dúvidas, o que travou, o que ajudou… (o professor vê)';
+      area.value = ex.note || '';
+      area.setAttribute('aria-label', 'Minhas observações neste exercício');
+      area.addEventListener('input', () => store.setCustomNote(ex.id, area.value));
+      mine.appendChild(area);
+      body.appendChild(mine);
+    } else {
+      const actions = el('div', 'day-actions');
+      const edit = el('button', 'action', '✎ Editar exercício');
+      edit.addEventListener('click', () => {
+        openSheet(exerciseFormView({
+          existing: store.getCustomExercises()[ex.id],
+          onSaved: () => { closeSheet(); render(); },
+        }));
+      });
+      actions.appendChild(edit);
+      body.appendChild(actions);
+    }
   }
 
   if (ex.steps && ex.steps.length) {
@@ -1577,7 +1646,7 @@ function libraryView(startFilter = 'todos') {
   const root = el('div');
   root.innerHTML =
     '<h2>Exercícios</h2>' +
-    '<div class="sub">Os seus aparecem primeiro: toque num deles para editar. Os prontos não mudam.</div>' +
+    '<div class="sub">Os seus aparecem primeiro: toque num deles para editar. Os prontos e os que vieram do professor não mudam.</div>' +
     '<button class="action" data-create>+ Criar exercício</button>' +
     '<div class="chip-row cat-row"></div><div class="bank-list"></div>';
   const catRow = root.querySelector('.cat-row');
@@ -1605,15 +1674,16 @@ function libraryView(startFilter = 'todos') {
       list.appendChild(el('p', 'empty', 'Você ainda não criou nenhum exercício. Toque em “+ Criar exercício”.'));
     }
     entries.forEach((ex) => {
-      const item = el('button', `bank-item${ex.custom ? '' : ' disabled'}`);
-      item.disabled = !ex.custom;
+      const editable = ex.custom && !ex.fromTeacher; // os do professor o aluno só anota (no cartão do dia)
+      const item = el('button', `bank-item${editable ? '' : ' disabled'}`);
+      item.disabled = !editable;
       item.innerHTML =
         '<div class="bi-title"></div>' +
         `<div class="bi-meta">${CATEGORIES[ex.cat]} · ${ex.min} min</div>` +
-        `<div class="bi-sub"></div><div class="bi-flag">${ex.custom ? '✎ editar' : 'pronto'}</div>`;
+        `<div class="bi-sub"></div><div class="bi-flag">${editable ? '✎ editar' : ex.fromTeacher ? '🎓 do professor' : 'pronto'}</div>`;
       item.querySelector('.bi-title').textContent = ex.title;
       item.querySelector('.bi-sub').textContent = ex.subtitle || (ex.custom ? (ex.text || '').split('\n')[0].slice(0, 90) : '');
-      if (ex.custom) item.addEventListener('click', () => openForm(store.getCustomExercises()[ex.id]));
+      if (editable) item.addEventListener('click', () => openForm(store.getCustomExercises()[ex.id]));
       list.appendChild(item);
     });
   };

@@ -2,7 +2,8 @@
 // instruções e minutos. Funções puras (sem navegador), testadas em tests/custom-exercises.test.mjs.
 //
 // Guardados em data.exercises (store.js), um registro por id:
-//   { id, title, text, min, bpm?, createdAt, updatedAt }    — exercício (bpm: {start, goal}, opcional)
+//   { id, title, text, min, bpm?, src?, note?, createdAt, updatedAt } — exercício (bpm: {start, goal},
+//        opcional; src: id de origem, se veio do professor; note: observação do aluno)
 //   { id, deleted: true, updatedAt }                        — apagado (fica como "lápide")
 // A lápide é o que faz o apagar sincronizar: se só sumisse da lista, o outro aparelho ainda teria
 // o exercício e o merge (merge.js, vale o updatedAt mais novo por id) o traria de volta.
@@ -67,10 +68,40 @@ export function customToExercise(record) {
     text: record.text || '',
     custom: true,
   };
+  if (record.src) ex.fromTeacher = true; // veio de uma atribuição do professor (virou do aluno)
+  if (record.note) ex.note = record.note; // observação do aluno
   // Registro vindo de outro aparelho/professor não é confiável: só vale com os dois números certos.
   const b = record.bpm;
   if (b && Number.isFinite(b.start) && Number.isFinite(b.goal)) ex.bpm = { start: b.start, goal: b.goal };
   return ex;
+}
+
+// Atribuir um exercício do professor a um aluno = dar ao aluno uma CÓPIA, que passa a ser dele
+// (pedido do usuário, 2026-10-15): o aluno edita à vontade sem mexer no original nem nas cópias dos
+// outros alunos. `src` guarda o id do exercício de origem; é por ele que atribuir o mesmo exercício
+// de novo ao mesmo aluno reaproveita a cópia que ele já tem (e já pode ter personalizado), em vez
+// de criar duplicata ou sobrescrever a versão dele.
+export function makeStudentCopy(ex, { now = Date.now(), random = Math.random } = {}) {
+  const copy = {
+    id: makeCustomId(now, random),
+    title: ex.title,
+    text: ex.text || '',
+    min: ex.min,
+    src: ex.id,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (ex.bpm) copy.bpm = { start: ex.bpm.start, goal: ex.bpm.goal };
+  return copy;
+}
+
+// Procura, em um ou mais mapas de registros, a cópia (não apagada) feita a partir de `srcId`.
+export function findCopyOf(srcId, ...maps) {
+  for (const map of maps) {
+    const hit = Object.values(map || {}).find((rec) => rec && !rec.deleted && rec.src === srcId);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 // Todos os exercícios criados e não apagados, em ordem alfabética (pra lista do banco).

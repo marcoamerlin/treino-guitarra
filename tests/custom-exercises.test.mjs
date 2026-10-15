@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CUSTOM_CAT, LIMITS, makeCustomId, isCustomId, cleanFields, customToExercise, customList,
+  makeStudentCopy, findCopyOf,
 } from '../js/custom-exercises.js';
 
 // store.js lê o localStorage já ao ser importado: o falso tem que existir antes (import dinâmico).
@@ -139,4 +140,53 @@ test('store: guarda o bpm; editar sem bpm tira o metrônomo do exercício', () =
 
   store.saveCustomExercise(id, { title: 'Só texto agora', text: '', min: 10 });
   assert.equal('bpm' in store.getCustomExercises()[id], false);
+});
+
+test('makeStudentCopy: cópia nova (id próprio) com o conteúdo e a origem; bpm só se houver', () => {
+  const src = { id: 'meu_prof', title: 'Spider', text: 'texto', min: 8, custom: true, bpm: { start: 60, goal: 100 }, note: 'não vai junto' };
+  const copy = makeStudentCopy(src, { now: 1000, random: () => 0.5 });
+  assert.ok(isCustomId(copy.id) && copy.id !== 'meu_prof');
+  assert.deepEqual(copy, {
+    id: copy.id, title: 'Spider', text: 'texto', min: 8, src: 'meu_prof',
+    bpm: { start: 60, goal: 100 }, createdAt: 1000, updatedAt: 1000,
+  });
+  assert.equal('bpm' in makeStudentCopy({ id: 'meu_p', title: 'x', min: 5 }), false);
+  assert.equal('note' in copy, false);
+});
+
+test('findCopyOf: acha a cópia pela origem; ignora apagadas e procura em vários mapas', () => {
+  const a = { c1: { id: 'c1', title: 'x', src: 'orig' }, c2: { id: 'c2', deleted: true, updatedAt: 1 } };
+  const b = { c3: { id: 'c3', title: 'y', src: 'outro' } };
+  assert.equal(findCopyOf('orig', a, b).id, 'c1');
+  assert.equal(findCopyOf('outro', a, b).id, 'c3');
+  assert.equal(findCopyOf('nada', a, b), null);
+  assert.equal(findCopyOf('orig', undefined, null), null);
+  assert.equal(findCopyOf('orig', { c1: { id: 'c1', deleted: true, src: 'orig' } }), null);
+});
+
+test('customToExercise: marca o que veio do professor e leva a observação do aluno', () => {
+  const ex = customToExercise({ id: 'meu_a', title: 'T', min: 8, src: 'meu_p', note: 'minha dúvida' });
+  assert.equal(ex.fromTeacher, true);
+  assert.equal(ex.note, 'minha dúvida');
+  const own = customToExercise({ id: 'meu_b', title: 'T', min: 8 });
+  assert.equal('fromTeacher' in own, false);
+  assert.equal('note' in own, false);
+});
+
+test('store: observação do aluno grava, apara, limita, esvazia e não ressuscita exercício apagado', () => {
+  const id = makeCustomId();
+  store.saveCustomExercise(id, { title: 'Do professor', text: 'x', min: 8 });
+  store.setCustomNote(id, '  achei difícil  ');
+  assert.equal(store.getCustomExercises()[id].note, 'achei difícil');
+  store.setCustomNote(id, 'a'.repeat(3000));
+  assert.equal(store.getCustomExercises()[id].note.length, 1000);
+  store.setCustomNote(id, '   ');
+  assert.equal('note' in store.getCustomExercises()[id], false);
+
+  store.setCustomNote('meu_inexistente', 'x');
+  assert.equal('meu_inexistente' in store.getCustomExercises(), false);
+  store.deleteCustomExercise(id);
+  store.setCustomNote(id, 'tarde demais');
+  assert.equal(store.getCustomExercises()[id].deleted, true);
+  assert.equal('note' in store.getCustomExercises()[id], false);
 });

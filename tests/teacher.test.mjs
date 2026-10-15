@@ -239,3 +239,85 @@ test('writeStudentSpeed: só mexe em speeds, não em plans nem logs', async () =
   assert.deepEqual(db.user_data[0].data.logs, { x: 1 });
   assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'chroma', min: 10 }]);
 });
+
+// ---- cópias de exercícios do professor entregues ao aluno (2026-10-15) ----
+
+const copyRec = (id, extra = {}) => ({ id, title: 'Spider', text: '1-2-3-4 em cada corda.', min: 8, src: 'meu_prof1', ...extra });
+
+test('writeStudentPlan: cria a linha do aluno já com as cópias dos exercícios do professor', async () => {
+  const { client, db } = makeServer();
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'meu_a1', min: 8 }], {
+    meu_a1: copyRec('meu_a1', { bpm: { start: 60, goal: 100 } }),
+  });
+  const saved = db.user_data[0].data.exercises.meu_a1;
+  assert.equal(saved.title, 'Spider');
+  assert.equal(saved.text, '1-2-3-4 em cada corda.');
+  assert.deepEqual(saved.bpm, { start: 60, goal: 100 });
+  assert.equal(saved.src, 'meu_prof1');
+  assert.ok(saved.createdAt > 0 && saved.updatedAt >= saved.createdAt);
+  assert.deepEqual(db.user_data[0].data.plans.seg.items, [{ ex: 'meu_a1', min: 8, locked: true }]);
+});
+
+test('writeStudentPlan: sem cópias, não cria a chave exercises (linha nova nem existente)', async () => {
+  const { client, db } = makeServer();
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'chroma', min: 10 }]);
+  assert.equal('exercises' in db.user_data[0].data, false);
+  await writeStudentPlan(client, 's1', 'ter', [{ ex: 'chroma', min: 10 }], {});
+  assert.equal('exercises' in db.user_data[0].data, false);
+});
+
+test('writeStudentPlan: soma as cópias às que o aluno já tem, sem tocar no resto', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push({
+    user_id: 's1', rev: 2,
+    data: {
+      logs: {}, speeds: { chroma: { bpm: 80 } }, plans: {},
+      exercises: { meu_dele: { id: 'meu_dele', title: 'Do aluno', text: '', min: 10, createdAt: 1, updatedAt: 1 } },
+    },
+  });
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'meu_a1', min: 8 }], { meu_a1: copyRec('meu_a1') });
+  const data = db.user_data[0].data;
+  assert.equal(db.user_data[0].rev, 3);
+  assert.deepEqual(Object.keys(data.exercises).sort(), ['meu_a1', 'meu_dele']);
+  assert.equal(data.exercises.meu_dele.title, 'Do aluno');
+  assert.equal(data.speeds.chroma.bpm, 80);
+});
+
+test('writeStudentPlan: não sobrescreve uma cópia que o aluno já tem (observação dele fica) nem ressuscita uma apagada', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push({
+    user_id: 's1', rev: 1,
+    data: {
+      logs: {}, speeds: {}, plans: {},
+      exercises: {
+        meu_a1: { id: 'meu_a1', title: 'Spider', text: 'x', min: 8, src: 'meu_prof1', note: 'achei difícil', createdAt: 1, updatedAt: 50 },
+        meu_a2: { id: 'meu_a2', deleted: true, updatedAt: 60 },
+      },
+    },
+  });
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'meu_a1', min: 8 }, { ex: 'meu_a2', min: 8 }], {
+    meu_a1: copyRec('meu_a1', { title: 'Mudou' }),
+    meu_a2: copyRec('meu_a2'),
+  });
+  const ex = db.user_data[0].data.exercises;
+  assert.equal(ex.meu_a1.title, 'Spider');
+  assert.equal(ex.meu_a1.note, 'achei difícil');
+  assert.equal(ex.meu_a1.updatedAt, 50);
+  assert.equal(ex.meu_a2.deleted, true);
+});
+
+test('writeStudentPlan: re-limpa as cópias (id inválido, título vazio, faixas) e ignora a observação vinda do professor', async () => {
+  const { client, db } = makeServer();
+  await writeStudentPlan(client, 's1', 'seg', [{ ex: 'meu_ok', min: 8 }], {
+    meu_ok: copyRec('meu_ok', { title: '  Com espaços  ', min: 1, bpm: { start: 999, goal: 5 }, note: 'do professor?' }),
+    chroma: copyRec('chroma'), // não começa com meu_: entraria no lugar de um exercício do banco
+    meu_sem: copyRec('meu_sem', { title: '   ' }),
+    meu_nulo: null,
+  });
+  const ex = db.user_data[0].data.exercises;
+  assert.deepEqual(Object.keys(ex), ['meu_ok']);
+  assert.equal(ex.meu_ok.title, 'Com espaços');
+  assert.equal(ex.meu_ok.min, 5);
+  assert.deepEqual(ex.meu_ok.bpm, { start: 240, goal: 240 });
+  assert.equal('note' in ex.meu_ok, false);
+});
