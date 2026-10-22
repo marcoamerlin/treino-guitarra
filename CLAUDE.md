@@ -350,6 +350,30 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   **Não testado com login real** (professor + aluno em contas Supabase de verdade): o que vale o
   schema/RLS atual (professor grava a linha inteira do aluno) ainda precisa do SQL rodado em produção
   (ver Pendências).
+- `js/admin-core.js` + `js/admin.js` + `supabase/functions/create-user/index.ts` (pedido do usuário,
+  2026-10-22: achava desconfortável criar cada conta à mão no painel do Supabase): **cadastro de
+  usuário por um administrador, dentro do app**. Criar usuário exige a chave `service_role`, que nunca
+  pode ir pro app; por isso quem cria é uma **Edge Function** `create-user` (Deno, roda no Supabase):
+  confere o login de quem chamou (`auth.getUser()` com o Bearer dele), confere a tabela `admins` com
+  esse mesmo login (o RLS só deixa ver a própria linha) e só então usa a chave secreta
+  (`auth.admin.createUser`, `email_confirm: true`). Cadastro público continua desligado. Tabela
+  `admins` em `supabase/schema.sql`: o app só LÊ a própria linha (grant só de select; ninguém vira
+  admin pelo app — o 1º admin entra por `insert ... select from auth.users` no SQL Editor, ver
+  `docs/setup.md` seção 4). `admin-core.js` (puro, testado em `tests/admin.test.mjs`): `validateNewUser`
+  (e-mail minúsculo/sem espaços, senha 8–72 — 72 é o limite do bcrypt), `generatePassword` (12 chars sem
+  0/O/1/l/I, `crypto.getRandomValues` sem viés, ao menos maiúscula+minúscula+número), `isAdmin` (qualquer
+  falha vira `false`: esconder a tela é conforto, a trava é a função) e `createUser` (traduz os códigos
+  da função — `not_admin`, `email_exists`, `weak_password`, 404 = função não publicada, etc.; o erro
+  vem em `error.context.json()`). UI em app.js: `adminSectionView()` ("▸ Cadastrar usuário
+  (administrador)", só aparece se `isAdmin`; mostra e-mail+senha temporária prontos pra copiar, por
+  `textContent`, e a senha nunca é guardada) e `passwordSectionView()` ("▸ Trocar minha senha", pra
+  todos, via `sync.changePassword` = `auth.updateUser`; sem tela de troca a pessoa cadastrada ficaria
+  com a senha que o admin escolheu). Essas áreas (senha, professor/aluno, admin) agora ficam num bloco
+  `extras` remontado quando o e-mail muda — antes a área do professor ficava à mostra depois de sair
+  e entrar com outra conta na mesma folha. **Verificado só com a rede trocada por versões falsas** no
+  navegador (validações antes da rede, e-mail repetido, sucesso, copiar, troca de senha, não-admin sem a
+  tela, layout no celular) e testes de Node; a função em si (Deno) **não foi executada** — precisa ser
+  publicada e testada com uma conta admin de verdade.
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.

@@ -15,9 +15,13 @@ const reorder = (v) => {
 
 // Supabase de mentira: uma tabela user_data com controle por rev.
 function makeServer() {
-  const server = { row: null, updates: 0, beforeUpdate: null, failSelect: false };
+  const server = { row: null, updates: 0, beforeUpdate: null, failSelect: false, passwordChanges: [], updateUserError: null };
   server.client = () => ({
     auth: {
+      updateUser: async (attrs) => {
+        server.passwordChanges.push(attrs);
+        return { data: null, error: server.updateUserError };
+      },
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       getSession: async () => ({ data: { session: { user: { id: 'u1', email: 'eu@exemplo.com' } } } }),
       signInWithPassword: async () => ({ data: { session: { user: { id: 'u1', email: 'eu@exemplo.com' } } }, error: null }),
@@ -186,4 +190,23 @@ test('com exercícios criados, sincronizar sem novidades continua sem gravar nad
   await phone.sync.syncNow();
   assert.equal(server.row.rev, rev);
   assert.equal(server.updates, 0);
+});
+
+test('changePassword: troca a senha da conta logada pelo client do Supabase', async () => {
+  const server = makeServer();
+  const phone = makeDevice(server, day({}, {}));
+  await phone.sync.init();
+  await phone.sync.changePassword('nova-senha-123');
+  assert.deepEqual(server.passwordChanges, [{ password: 'nova-senha-123' }]);
+});
+
+test('changePassword: sem sessão não chama o Supabase; erro do servidor sobe pra tela mostrar', async () => {
+  const server = makeServer();
+  const phone = makeDevice(server, day({}, {}));
+  await assert.rejects(() => phone.sync.changePassword('nova-senha-123'), /Entre na sua conta/); // ainda sem init
+  assert.equal(server.passwordChanges.length, 0);
+
+  await phone.sync.init();
+  server.updateUserError = new Error('New password should be different from the old password.');
+  await assert.rejects(() => phone.sync.changePassword('mesma-senha-1'), /different from the old password/);
 });

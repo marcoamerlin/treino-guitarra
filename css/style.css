@@ -348,6 +348,7 @@ textarea.notes.teacher-note-input { min-height: 0; margin-top: 8px; }
 }
 .code-lcd .num { font-family: var(--font-mono); font-size: 22px; font-weight: 600; color: var(--lcd-text); letter-spacing: 3px; }
 .teacher-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
+.cred-box { margin: 8px 0; padding: 10px 12px; background: var(--lcd-bg); border: 1px solid var(--border); border-radius: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--lcd-text); white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
 .teacher-toggle { background: none; border: none; color: var(--brass); font-family: var(--font-mono); font-size: 13px; padding: 0; cursor: pointer; }
 .date-range.account-form { flex-direction: row; gap: 10px; margin: 8px 0 14px; }
 .date-range label { flex: 1; }

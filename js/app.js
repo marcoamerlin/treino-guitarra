@@ -18,6 +18,8 @@ import { GUITAR_STRINGS, IN_TUNE_CENTS } from './pitch.js';
 import { store } from './store.js';
 import { sync } from './sync.js';
 import { teacher } from './teacher.js';
+import { admin } from './admin.js';
+import { PASSWORD_MIN, generatePassword, validatePassword } from './admin-core.js';
 
 // ---- Utilidades -----------------------------------------------------------
 
@@ -563,7 +565,11 @@ function accountView() {
   const syncPart = el('div');
   wrap.appendChild(syncPart);
   let lastKey = '';
-  let teacherMounted = false;
+  // Áreas que dependem de QUEM está logado (senha, professor/aluno, cadastro por admin). Ficam
+  // num bloco à parte e só são remontadas quando o e-mail muda: ao sair e entrar com outra conta
+  // na mesma folha, nada da conta anterior (alunos, tela de admin) continua à mostra.
+  const extras = el('div');
+  let extrasEmail = null;
 
   const draw = () => {
     const s = sync.getState();
@@ -631,17 +637,151 @@ function accountView() {
       });
     }
 
-    // Monta a área de professor/aluno uma única vez, assim que há sessão — não depende do
-    // status de sincronização (syncing/ok/erro), então não refaz a cada redesenho.
-    if (s.email && !teacherMounted) {
-      teacherMounted = true;
-      wrap.appendChild(teacherSectionView());
+    // Não depende do status de sincronização (syncing/ok/erro): só do e-mail, então não refaz a
+    // cada redesenho.
+    if ((s.email || null) !== extrasEmail) {
+      extrasEmail = s.email || null;
+      extras.innerHTML = '';
+      if (extrasEmail) {
+        extras.appendChild(passwordSectionView());
+        extras.appendChild(teacherSectionView());
+        extras.appendChild(adminSectionView());
+      }
     }
   };
 
+  wrap.appendChild(extras);
   sheetRedrawers.push(draw);
   draw();
   return wrap;
+}
+
+// ---- Senha e cadastro de usuários -------------------------------------------------------
+
+function passwordMessage(error) {
+  const text = (error && error.message) || String(error);
+  if (/different from the old password/i.test(text)) return 'A nova senha precisa ser diferente da atual.';
+  if (/weak|too short|at least/i.test(text)) return 'O Supabase achou essa senha fraca demais. Use uma mais longa.';
+  return text;
+}
+
+// Troca da própria senha (quem foi cadastrado por um administrador entra com a senha temporária e
+// troca aqui). A senha só passa pelo formulário e vai direto ao Supabase: nunca é guardada.
+function passwordSectionView() {
+  const root = el('div', 'teacher-section');
+
+  function showToggle(done = false) {
+    root.innerHTML = '<button class="teacher-toggle">▸ Trocar minha senha</button>' + (done ? '<p class="sub">Senha trocada. ✓</p>' : '');
+    root.querySelector('button').addEventListener('click', showForm);
+  }
+
+  function showForm() {
+    root.innerHTML =
+      '<div class="sub">Trocar minha senha</div>' +
+      '<form class="account-form">' +
+        `<label>Nova senha (mínimo ${PASSWORD_MIN} caracteres)<input type="password" name="password" autocomplete="new-password" required></label>` +
+        '<label>Repita a nova senha<input type="password" name="again" autocomplete="new-password" required></label>' +
+        '<button class="action primary" type="submit">Trocar senha</button>' +
+        '<p class="form-error" role="alert"></p>' +
+      '</form>';
+    const form = root.querySelector('form');
+    const message = form.querySelector('.form-error');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = form.elements;
+      const problem = validatePassword(f.password.value)
+        || (f.password.value !== f.again.value ? 'As duas senhas não são iguais.' : null);
+      if (problem) { message.textContent = problem; return; }
+      const submit = form.querySelector('button');
+      submit.disabled = true;
+      message.textContent = '';
+      try {
+        await sync.changePassword(f.password.value);
+        showToggle(true);
+        toast('Senha trocada.');
+      } catch (error) {
+        message.textContent = passwordMessage(error);
+        submit.disabled = false;
+      }
+    });
+  }
+
+  showToggle();
+  return root;
+}
+
+// Cadastro de usuário por administrador. Só aparece pra quem está na tabela `admins`; quem de fato
+// cria a conta é a Edge Function create-user (que confere isso de novo no servidor — esconder a
+// tela é conforto, não é a trava). A senha temporária é mostrada uma vez, pro admin passar à pessoa.
+function adminSectionView() {
+  const root = el('div', 'teacher-section');
+  root.hidden = true;
+
+  function showToggle() {
+    root.innerHTML = '<button class="teacher-toggle">▸ Cadastrar usuário (administrador)</button>';
+    root.querySelector('button').addEventListener('click', () => showForm(null));
+  }
+
+  function showForm(lastCreated) {
+    root.innerHTML =
+      '<div class="sub">Cadastrar usuário</div>' +
+      '<p class="tip">A conta já nasce pronta para entrar. Passe o e-mail e a senha temporária à pessoa; ' +
+        'ela entra e troca a senha em “Trocar minha senha”.</p>' +
+      '<form class="account-form">' +
+        '<label>E-mail<input type="email" name="email" autocomplete="off" autocapitalize="none" required></label>' +
+        `<label>Senha temporária (mínimo ${PASSWORD_MIN})<input type="text" name="password" autocomplete="off" autocapitalize="none" spellcheck="false" required></label>` +
+        '<div class="day-actions"><button class="action" type="button" data-generate>Gerar senha</button></div>' +
+        '<button class="action primary" type="submit">Cadastrar</button>' +
+        '<p class="form-error" role="alert"></p>' +
+      '</form>' +
+      '<div class="created-user"></div>';
+    const form = root.querySelector('form');
+    const message = form.querySelector('.form-error');
+    const f = form.elements;
+    f.password.value = generatePassword();
+    form.querySelector('[data-generate]').addEventListener('click', () => { f.password.value = generatePassword(); });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submit = form.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      message.textContent = '';
+      try {
+        const made = await admin.createUser({ email: f.email.value, password: f.password.value });
+        showForm({ email: made.email, password: f.password.value });
+        toast('Usuário cadastrado.');
+      } catch (error) {
+        message.textContent = error.message || String(error);
+        submit.disabled = false;
+      }
+    });
+
+    if (lastCreated) drawCreated(root.querySelector('.created-user'), lastCreated);
+  }
+
+  // Dados do último cadastro, prontos pra copiar e mandar. Tudo por textContent.
+  function drawCreated(box, { email, password }) {
+    const address = location.origin + location.pathname;
+    const text =
+      `Treino de Guitarra\nEndereço: ${address}\nE-mail: ${email}\nSenha temporária: ${password}\n` +
+      'Depois de entrar, troque a senha em Conta → Trocar minha senha.';
+    box.innerHTML = '<div class="sub">Usuário cadastrado. Passe estes dados à pessoa:</div><pre class="cred-box"></pre>' +
+      '<div class="day-actions"><button class="action" type="button" data-copy>Copiar</button></div>' +
+      '<p class="tip">A senha aparece só agora: ao fechar esta tela ela não fica guardada em lugar nenhum.</p>';
+    box.querySelector('.cred-box').textContent = text;
+    box.querySelector('[data-copy]').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast('Copiado.');
+      } catch (e) {
+        toast('Não consegui copiar. Selecione o texto e copie.');
+      }
+    });
+  }
+
+  showToggle();
+  admin.isAdmin().then((yes) => { root.hidden = !yes; });
+  return root;
 }
 
 // ---- Professor e aluno --------------------------------------------------------------

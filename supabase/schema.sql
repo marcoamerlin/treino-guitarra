@@ -143,3 +143,27 @@ create policy "user_data_update_teacher" on public.user_data
     select 1 from public.teacher_links tl
     where tl.student_id = user_data.user_id and tl.teacher_id = (select auth.uid())
   ));
+
+-- ---------------------------------------------------------------------------------------------
+-- Administradores: quem pode cadastrar novos usuários pelo app (tela "Cadastrar usuário").
+-- Quem cria a conta de verdade é a Edge Function `create-user` (supabase/functions/create-user),
+-- que confere esta tabela. O app só LÊ a própria linha (pra saber se mostra a tela); ninguém
+-- se torna admin pelo app: o primeiro admin entra à mão no SQL Editor (ver docs/setup.md).
+-- ---------------------------------------------------------------------------------------------
+
+create table if not exists public.admins (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  email      text        not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.admins enable row level security;
+
+revoke all on public.admins from anon;
+revoke all on public.admins from authenticated;
+grant select on public.admins to authenticated;   -- sem insert/update/delete: só pelo SQL Editor
+
+drop policy if exists "admins_select_own" on public.admins;
+
+create policy "admins_select_own" on public.admins
+  for select to authenticated using ((select auth.uid()) = user_id);

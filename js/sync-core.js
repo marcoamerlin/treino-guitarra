@@ -59,6 +59,14 @@ export function createSync({ store, config, loadSdk }) {
     await syncNow();
   }
 
+  // Troca a senha da conta logada (a sessão continua valendo; só a senha muda). Quem foi cadastrado
+  // por um administrador entra com a senha temporária que ele passou e troca aqui.
+  async function changePassword(newPassword) {
+    if (!client || !session) throw new Error('Entre na sua conta primeiro.');
+    const { error } = await client.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
   async function signOut() {
     if (client) await client.auth.signOut();
     session = null;
@@ -133,6 +141,7 @@ export function createSync({ store, config, loadSdk }) {
     init,
     signIn,
     signOut,
+    changePassword,
     syncNow,
     schedule,
     getState: () => state,

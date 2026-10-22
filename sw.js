@@ -2,7 +2,7 @@
 // Arquivos do app: rede primeiro (pega atualizações), cache como reserva.
 // Fontes do Google: cache na primeira visita, para aparecerem offline depois.
 
-const CACHE = 'guitarra-v25';
+const CACHE = 'guitarra-v26';
 const SHELL = [
   './',
   'index.html',
@@ -29,6 +29,8 @@ const SHELL = [
   'js/sync.js',
   'js/teacher-core.js',
   'js/teacher.js',
+  'js/admin-core.js',
+  'js/admin.js',
   'js/config.js',
   'js/data/chords.js',
   'js/data/exercises.js',
