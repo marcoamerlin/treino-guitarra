@@ -163,6 +163,57 @@ export async function writeStudentPlan(client, studentId, dayKey, items, exercis
   throw new Error('Não consegui salvar agora (o aluno estava sincronizando). Tente de novo.');
 }
 
+// Leva uma correção do exercício original às cópias que o aluno já tem (pedido do usuário,
+// 2026-10-15). `sources`: { idDoOriginal: registro } — os exercícios do professor. Para cada cópia
+// do aluno (não apagada) cujo `src` esteja em `sources`, o CONTEÚDO (título, instruções, minutos,
+// metrônomo) passa a ser o do original; observação do aluno, createdAt, src e id ficam. O aluno não
+// edita o conteúdo, então sobrescrever é seguro. Só grava se algo realmente mudou (idempotente) e
+// devolve quantas cópias foram atualizadas. Mesmo controle otimista de writeStudentPlan; o merge do
+// lado do aluno protege uma observação ainda não sincronizada (mergeExercises).
+const sameBpm = (a, b) => (!a && !b) || (a && b && a.start === b.start && a.goal === b.goal);
+
+export async function syncStudentCopies(client, studentId, sources = {}) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const { data: row, error } = await client
+      .from('user_data').select('data, rev').eq('user_id', studentId).maybeSingle();
+    if (error) throw error;
+    const have = (row && row.data.exercises) || {};
+
+    const now = Date.now();
+    const changes = {};
+    Object.values(have).forEach((rec) => {
+      if (!rec || rec.deleted || !rec.src || !sources[rec.src]) return;
+      const src = sources[rec.src];
+      if (!src || src.deleted) return;
+      const r = cleanFields({
+        title: src.title, text: src.text, min: src.min,
+        bpmStart: src.bpm && src.bpm.start, bpmGoal: src.bpm && src.bpm.goal,
+      });
+      if (!r.ok) return;
+      const v = r.value;
+      if (rec.title === v.title && (rec.text || '') === v.text && rec.min === v.min && sameBpm(rec.bpm, v.bpm)) return;
+      const next = { ...rec, title: v.title, text: v.text, min: v.min, updatedAt: now };
+      if (v.bpm) next.bpm = v.bpm; else delete next.bpm;
+      // fixa a observação com o carimbo dela: o updatedAt novo não pode "roubar" a vez dela no merge
+      if (rec.note && rec.noteAt == null) next.noteAt = rec.updatedAt || 0;
+      changes[rec.id] = next;
+    });
+    if (!Object.keys(changes).length) return 0;
+
+    const nextData = { ...row.data, exercises: { ...have, ...changes } };
+    const { data: updated, error: updateError } = await client
+      .from('user_data')
+      .update({ data: nextData, rev: row.rev + 1, updated_at: new Date().toISOString() })
+      .eq('user_id', studentId)
+      .eq('rev', row.rev)
+      .select('rev');
+    if (updateError) throw updateError;
+    if (updated && updated.length) return Object.keys(changes).length;
+    // rev mudou entre a leitura e a escrita (aluno sincronizou nesse meio-tempo): refaz.
+  }
+  throw new Error('Não consegui atualizar agora (o aluno estava sincronizando). Tente de novo.');
+}
+
 function pushHistory(speed, dateStr) {
   const history = [...(speed.history || [])];
   const last = history[history.length - 1];

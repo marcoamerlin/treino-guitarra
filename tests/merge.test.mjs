@@ -114,3 +114,52 @@ test('exercises: quem nunca criou nenhum não ganha a chave (a linha no servidor
   const withOne = mergeData({ exercises: { meu_a: { id: 'meu_a', title: 'A', updatedAt: 1 } } }, {});
   assert.ok(sameData(withOne, mergeData(withOne, {})));
 });
+
+// ---- observação do aluno x correção do professor (2026-10-15) ----
+
+const copy = (extra = {}) => ({ id: 'meu_c', title: 'Spider', text: 'v1', min: 8, src: 'meu_p', createdAt: 1, updatedAt: 100, ...extra });
+const ex = (rec) => ({ exercises: { meu_c: rec } });
+
+test('exercises: correção do professor (updatedAt maior) não apaga a observação ainda não sincronizada do aluno', () => {
+  const alunoLocal = ex(copy({ note: 'travei no 3º compasso', noteAt: 150, updatedAt: 150 }));
+  const professor = ex(copy({ text: 'v2 corrigido', updatedAt: 200 })); // não conhece a observação
+  const merged = mergeData(alunoLocal, professor).exercises.meu_c;
+  assert.equal(merged.text, 'v2 corrigido');           // conteúdo: vale o mais novo
+  assert.equal(merged.note, 'travei no 3º compasso');  // observação: vale a dela, à parte
+  assert.equal(merged.noteAt, 150);
+  // e o contrário (o aluno é o "remoto"): mesmo resultado
+  assert.deepEqual(mergeData(professor, alunoLocal).exercises.meu_c, merged);
+});
+
+test('exercises: a observação mais nova vence, inclusive quando o aluno a apagou', () => {
+  const velha = ex(copy({ note: 'antiga', noteAt: 120, updatedAt: 120 }));
+  const nova = ex(copy({ note: 'nova', noteAt: 180, updatedAt: 180 }));
+  assert.equal(mergeData(velha, nova).exercises.meu_c.note, 'nova');
+  assert.equal(mergeData(nova, velha).exercises.meu_c.note, 'nova');
+
+  const apagada = ex(copy({ noteAt: 190, updatedAt: 190 })); // sem note, mas com noteAt: foi apagada depois
+  const merged = mergeData(nova, apagada).exercises.meu_c;
+  assert.equal('note' in merged, false);
+  assert.equal(merged.noteAt, 190);
+});
+
+test('exercises: registro de antes do noteAt conta a observação com o updatedAt dele', () => {
+  const legado = ex(copy({ note: 'sem noteAt', updatedAt: 140 }));
+  const professor = ex(copy({ text: 'v2', updatedAt: 200 }));
+  const merged = mergeData(legado, professor).exercises.meu_c;
+  assert.equal(merged.note, 'sem noteAt');
+  assert.equal(merged.text, 'v2');
+});
+
+test('exercises: apagado continua vencendo e não ganha observação; sem observação em lado nenhum, nada muda', () => {
+  const lapide = ex({ id: 'meu_c', deleted: true, updatedAt: 300 });
+  const comNota = ex(copy({ note: 'x', noteAt: 150 }));
+  const merged = mergeData(lapide, comNota).exercises.meu_c;
+  assert.equal(merged.deleted, true);
+  assert.equal('note' in merged, false);
+
+  const a = ex(copy({ updatedAt: 100 }));
+  const b = ex(copy({ text: 'v2', updatedAt: 200 }));
+  assert.deepEqual(mergeData(a, b).exercises.meu_c, b.exercises.meu_c);
+  assert.ok(sameData(mergeData(comNota, {}), mergeData(mergeData(comNota, {}), comNota)));
+});

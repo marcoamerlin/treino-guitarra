@@ -41,6 +41,10 @@ export const teacher = {
     const client = requireClient();
     return core.writeStudentPlan(client, studentId, dayKey, items, exercises);
   },
+  async syncStudentCopies(studentId, sources) {
+    const client = requireClient();
+    return core.syncStudentCopies(client, studentId, sources);
+  },
   async writeStudentSpeed(studentId, exId, delta, startBpm, dateStr) {
     const client = requireClient();
     return core.writeStudentSpeed(client, studentId, exId, delta, startBpm, dateStr);

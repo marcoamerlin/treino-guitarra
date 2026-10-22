@@ -322,9 +322,21 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   "MINHAS OBSERVAÇÕES" (`record.note`, máx. 1000, `store.setCustomNote`, grava a cada letra, vazia some),
   e o professor lê isso na linha do plano do aluno ("📝 Aluno: …"). Decisão do usuário (primeiro pensei
   em deixar o aluno editar; ele propôs travar e dar observações): o professor é dono do conteúdo e o
-  aluno personaliza por anotações, sem versões divergentes. Consequência prevista: como o aluno não muda
-  o conteúdo, dá pra uma correção do professor chegar a todos os alunos preservando as observações —
-  NÃO feito ainda (hoje a cópia é um retrato do momento da atribuição). Conferido com a rede trocada por
+  aluno personaliza por anotações, sem versões divergentes. **Correção do original chega às cópias**
+  (pedido do usuário, 2026-10-15): `syncStudentCopies(client, studentId, sources)` em teacher-core.js
+  lê a linha do aluno e, para cada cópia (não apagada) cujo `src` esteja em `sources` (os exercícios do
+  professor), troca o CONTEÚDO (título, instruções, minutos, bpm) pelo do original; observação, id,
+  `src` e `createdAt` ficam. Só grava se algo mudou (idempotente, devolve quantas atualizou), re-limpa
+  com `cleanFields`, ignora original apagado/título inválido, nunca cria linha nem ressuscita cópia
+  apagada, mesmo controle otimista por `rev`. Em app.js, `pushExerciseUpdates()` roda sozinho ao SALVAR
+  A EDIÇÃO de um exercício (criar não dispara) e à mão no botão "↻ Atualizar exercícios dos alunos"
+  (nas duas telas de "Meus alunos"; cobre edição feita sem rede/sem login). Falha de um aluno não trava
+  os outros. **Observação x correção:** o merge entre aparelhos escolhe o registro de exercício pelo
+  `updatedAt` mais novo, e uma correção do professor apagaria uma observação do aluno ainda não
+  sincronizada — por isso a observação tem carimbo próprio (`noteAt`, gravado por `setCustomNote`,
+  inclusive ao apagar) e `mergeExercises` (merge.js) escolhe `note` à parte do conteúdo; cópia antiga
+  sem `noteAt` conta com o `updatedAt` dela e `syncStudentCopies` fixa esse carimbo antes de gravar.
+  Testes: `tests/merge.test.mjs` e `tests/teacher.test.mjs`. Conferido com a rede trocada por
   versões falsas no navegador (sem login real): lista, atribuir, cópia única reutilizada, 2ª gravação sem
   reenviar, observação do aluno e layout no celular; testes de `writeStudentPlan` em `tests/teacher.test.mjs`.
   **Achado de segurança** ao fazer isso: na tela do professor, títulos de exercício entravam via
@@ -332,7 +344,7 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
   um título com HTML rodaria no navegador do professor (logado, com acesso aos dados dos alunos). Corrigido
   com `esc()` (e `textContent` no que é texto livre); vale para qualquer texto de outra pessoa.
   **Plano em fases:** (1) usuário cria pra si — feito; (1b) BPM/metrônomo — feito; (2) professor atribui
-  ao aluno — feito (acima); (2b) atualizar a cópia quando o professor corrige o original — ainda não;
+  ao aluno — feito (acima); (2b) atualizar a cópia quando o professor corrige o original — feito;
   (1c) **tablatura** (digitar a notação curta de `tab-dsl.js` e ouvir) — ainda não; (3) levar pra
   bateria (`RUDIMENTS` no lugar de `EXERCISES`, tabelas `drum_`) depois do usuário experimentar aqui.
   **Não testado com login real** (professor + aluno em contas Supabase de verdade): o que vale o

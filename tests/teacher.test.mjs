@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   myCode, linkToTeacher, myTeacher, listStudents, unlink, fetchStudentData, writeStudentPlan,
-  writeStudentSpeed,
+  writeStudentSpeed, syncStudentCopies,
 } from '../js/teacher-core.js';
 
 const clone = (v) => JSON.parse(JSON.stringify(v));
@@ -320,4 +320,101 @@ test('writeStudentPlan: re-limpa as cópias (id inválido, título vazio, faixas
   assert.equal(ex.meu_ok.min, 5);
   assert.deepEqual(ex.meu_ok.bpm, { start: 240, goal: 240 });
   assert.equal('note' in ex.meu_ok, false);
+});
+
+// ---- correção do original chega às cópias dos alunos (2026-10-15) ----
+
+const studentRow2 = (exercises, rev = 1) => ({ user_id: 's1', rev, data: { logs: {}, speeds: {}, plans: {}, exercises } });
+const aCopy = (extra = {}) => ({
+  id: 'meu_c1', title: 'Spider', text: 'v1', min: 8, src: 'meu_prof1', note: 'achei difícil', noteAt: 50,
+  bpm: { start: 60, goal: 100 }, createdAt: 1, updatedAt: 50, ...extra,
+});
+const original = (extra = {}) => ({ id: 'meu_prof1', title: 'Spider', text: 'v1', min: 8, bpm: { start: 60, goal: 100 }, ...extra });
+
+test('syncStudentCopies: o conteúdo corrigido chega à cópia e a observação do aluno fica', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push(studentRow2({ meu_c1: aCopy() }));
+  const n = await syncStudentCopies(client, 's1', {
+    meu_prof1: original({ title: 'Spider v2', text: 'v2 corrigido', min: 12, bpm: { start: 70, goal: 120 } }),
+  });
+  assert.equal(n, 1);
+  const rec = db.user_data[0].data.exercises.meu_c1;
+  assert.equal(rec.title, 'Spider v2');
+  assert.equal(rec.text, 'v2 corrigido');
+  assert.equal(rec.min, 12);
+  assert.deepEqual(rec.bpm, { start: 70, goal: 120 });
+  assert.equal(rec.note, 'achei difícil');      // observação do aluno intacta
+  assert.equal(rec.noteAt, 50);                 // e com o carimbo dela, não o da correção
+  assert.equal(rec.src, 'meu_prof1');
+  assert.equal(rec.createdAt, 1);
+  assert.ok(rec.updatedAt > 50);
+  assert.equal(db.user_data[0].rev, 2);
+});
+
+test('syncStudentCopies: se o original deixou de ter metrônomo, a cópia também deixa', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push(studentRow2({ meu_c1: aCopy() }));
+  await syncStudentCopies(client, 's1', { meu_prof1: original({ bpm: undefined }) });
+  assert.equal('bpm' in db.user_data[0].data.exercises.meu_c1, false);
+});
+
+test('syncStudentCopies: sem diferença não grava nada (idempotente), nem sobe o rev', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push(studentRow2({ meu_c1: aCopy() }));
+  assert.equal(await syncStudentCopies(client, 's1', { meu_prof1: original() }), 0);
+  assert.equal(db.user_data[0].rev, 1);
+  assert.equal(db.user_data[0].data.exercises.meu_c1.updatedAt, 50);
+});
+
+test('syncStudentCopies: só mexe em cópias do exercício dado; o resto do aluno fica como está', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push(studentRow2({
+    meu_c1: aCopy(),
+    meu_c2: aCopy({ id: 'meu_c2', src: 'meu_outro', title: 'De outro original' }),
+    meu_dele: { id: 'meu_dele', title: 'Criado pelo aluno', text: '', min: 10, createdAt: 1, updatedAt: 1 },
+    meu_morta: { id: 'meu_morta', deleted: true, updatedAt: 60 },
+  }));
+  db.user_data[0].data.speeds = { chroma: { bpm: 80 } };
+  const n = await syncStudentCopies(client, 's1', { meu_prof1: original({ title: 'Novo título' }) });
+  const data = db.user_data[0].data;
+  assert.equal(n, 1);
+  assert.equal(data.exercises.meu_c1.title, 'Novo título');
+  assert.equal(data.exercises.meu_c2.title, 'De outro original');
+  assert.equal(data.exercises.meu_dele.title, 'Criado pelo aluno');
+  assert.equal(data.exercises.meu_morta.deleted, true);
+  assert.equal(data.speeds.chroma.bpm, 80);
+});
+
+test('syncStudentCopies: cópia apagada pelo aluno não volta; original apagado não propaga; aluno sem linha vira 0', async () => {
+  const { client, db } = makeServer();
+  assert.equal(await syncStudentCopies(client, 'nunca-sincronizou', { meu_prof1: original() }), 0);
+  assert.equal(db.user_data.length, 0);
+
+  db.user_data.push(studentRow2({ meu_c1: { id: 'meu_c1', deleted: true, updatedAt: 70 }, meu_c3: aCopy({ id: 'meu_c3' }) }));
+  const n = await syncStudentCopies(client, 's1', { meu_prof1: { ...original(), deleted: true } });
+  assert.equal(n, 0);
+  assert.equal(db.user_data[0].data.exercises.meu_c1.deleted, true);
+  assert.equal(db.user_data[0].data.exercises.meu_c3.title, 'Spider');
+});
+
+test('syncStudentCopies: título inválido no original é ignorado (não estraga a cópia) e limites são aplicados', async () => {
+  const { client, db } = makeServer();
+  db.user_data.push(studentRow2({ meu_c1: aCopy() }));
+  assert.equal(await syncStudentCopies(client, 's1', { meu_prof1: original({ title: '   ' }) }), 0);
+  assert.equal(db.user_data[0].data.exercises.meu_c1.title, 'Spider');
+  await syncStudentCopies(client, 's1', { meu_prof1: original({ min: 1, bpm: { start: 999, goal: 5 } }) });
+  const rec = db.user_data[0].data.exercises.meu_c1;
+  assert.equal(rec.min, 5);
+  assert.deepEqual(rec.bpm, { start: 240, goal: 240 });
+});
+
+test('syncStudentCopies: cópia antiga com observação mas sem noteAt ganha o carimbo dela, pra o merge não perder a nota', async () => {
+  const { client, db } = makeServer();
+  const legado = aCopy({ updatedAt: 55 });
+  delete legado.noteAt;
+  db.user_data.push(studentRow2({ meu_c1: legado }));
+  await syncStudentCopies(client, 's1', { meu_prof1: original({ text: 'v2' }) });
+  const rec = db.user_data[0].data.exercises.meu_c1;
+  assert.equal(rec.noteAt, 55);
+  assert.equal(rec.note, 'achei difícil');
 });

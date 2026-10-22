@@ -659,7 +659,7 @@ function teacherSectionView() {
     const box = el('div');
     if (myTeacherRow) {
       box.innerHTML =
-        `<p class="sub">Vinculado ao professor <strong>${myTeacherRow.teacher_email}</strong></p>` +
+        `<p class="sub">Vinculado ao professor <strong>${esc(myTeacherRow.teacher_email)}</strong></p>` +
         '<div class="day-actions"><button class="action" data-unlink>Desvincular</button></div>';
       box.querySelector('[data-unlink]').addEventListener('click', async () => {
         if (!window.confirm(`Desvincular do professor ${myTeacherRow.teacher_email}?`)) return;
@@ -724,6 +724,7 @@ function teacherSectionView() {
       refreshTeacherPill();
     })));
     box.appendChild(list);
+    if (students.length) box.appendChild(el('div', 'day-actions')).appendChild(updateCopiesButton());
     return box;
   }
 
@@ -741,13 +742,46 @@ function teacherSectionView() {
   return root;
 }
 
+// Leva as correções dos exercícios do professor às cópias dos alunos (ver syncStudentCopies em
+// teacher-core.js). Roda sozinho ao salvar a edição de um exercício e, à mão, pelo botão "Atualizar
+// exercícios dos alunos" — o botão cobre o caso de a edição ter sido feita sem rede ou sem login.
+// Devolve { students, changed, failed }; nunca lança (falha de um aluno não trava os outros).
+async function pushExerciseUpdates() {
+  const sources = Object.fromEntries(Object.entries(store.getCustomExercises()).filter(([, rec]) => !rec.deleted));
+  const result = { students: 0, changed: 0, failed: 0 };
+  if (!Object.keys(sources).length || !teacher.available()) return result;
+  let students = [];
+  try { students = await teacher.listStudents(); } catch (e) { result.failed += 1; return result; }
+  result.students = students.length;
+  for (const s of students) {
+    try { result.changed += await teacher.syncStudentCopies(s.student_id, sources); } catch (e) { result.failed += 1; }
+  }
+  return result;
+}
+
+function toastExerciseUpdates({ students, changed, failed }, { quiet = false } = {}) {
+  if (failed) toast('Não consegui atualizar todos os alunos. Use “Atualizar exercícios dos alunos” em Meus alunos.');
+  else if (changed) toast(`Exercício atualizado para ${changed} cópia${changed > 1 ? 's' : ''} de aluno.`);
+  else if (!quiet) toast(students ? 'Os exercícios dos alunos já estavam atualizados.' : 'Nenhum aluno vinculado.');
+}
+
+// Botão que refaz a atualização acima, para as duas telas de "Meus alunos".
+function updateCopiesButton() {
+  const btn = el('button', 'action', '↻ Atualizar exercícios dos alunos');
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try { toastExerciseUpdates(await pushExerciseUpdates()); } finally { btn.disabled = false; }
+  });
+  return btn;
+}
+
 // Uma linha "aluno" reaproveitada pela tela de conta (teacherSectionView) e pelo atalho rápido
 // (myStudentsView, pelo botão "🎓 Alunos" do cabeçalho). onUnlink já cuida de tirar da lista
 // local depois de desvincular no banco.
 function studentRow(student, onUnlink) {
   const row = el('div', 'bank-item');
   row.innerHTML =
-    `<div class="bi-title">${student.student_email}</div>` +
+    `<div class="bi-title">${esc(student.student_email)}</div>` +
     '<div class="bi-sub">Toque em Planejar para montar a semana dele.</div>' +
     '<div class="day-actions" style="margin-top:8px"><button class="action" data-plan>Planejar</button>' +
     '<button class="action" data-unlink>Desvincular</button></div>';
@@ -777,6 +811,7 @@ function myStudentsView() {
       refreshTeacherPill();
     })));
     root.appendChild(list);
+    if (students.length) root.appendChild(el('div', 'day-actions')).appendChild(updateCopiesButton());
   }
 
   teacher.listStudents().then((list) => { students = list; redraw(); })
@@ -799,7 +834,7 @@ function refreshTeacherPill() {
 // dias concluídos) + edição do plano de um dia, salvando direto no banco do aluno.
 function studentPlanView(student) {
   const root = el('div');
-  root.innerHTML = `<h2>${student.student_email}</h2><div class="sub">Carregando dados do aluno…</div>`;
+  root.innerHTML = `<h2>${esc(student.student_email)}</h2><div class="sub">Carregando dados do aluno…</div>`;
 
   let studentData = null;
   let dayKey = (WEEK.find((d) => d.weekday === today.getDay()) || WEEK[0]).key;
@@ -1166,11 +1201,11 @@ function studentPlanView(student) {
   }
 
   function loadAll() {
-    root.innerHTML = `<h2>${student.student_email}</h2><div class="sub">Carregando dados do aluno…</div>`;
+    root.innerHTML = `<h2>${esc(student.student_email)}</h2><div class="sub">Carregando dados do aluno…</div>`;
     teacher.fetchStudentData(student.student_id).then((result) => {
       studentData = (result && result.data) || { logs: {}, speeds: {}, plans: {} };
       root.innerHTML =
-        `<h2>${student.student_email}</h2>` +
+        `<h2>${esc(student.student_email)}</h2>` +
         '<div class="day-actions"><button class="action" data-refresh>↻ Atualizar</button></div>' +
         '<div class="week-block"></div>' +
         '<div class="progress-block"></div>' +
@@ -1181,7 +1216,7 @@ function studentPlanView(student) {
       root.querySelector('.progress-block').appendChild(progressBlock());
       loadDay();
     }).catch((error) => {
-      root.innerHTML = `<h2>${student.student_email}</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`;
+      root.innerHTML = `<h2>${esc(student.student_email)}</h2><p class="tip">Não consegui carregar: ${error.message || error}</p>`;
     });
   }
 
@@ -1621,6 +1656,8 @@ function exerciseFormView({ existing = null, onSaved, onDeleted = null }) {
     if (!result.ok) { form.querySelector('.form-error').textContent = result.error; return; }
     const id = existing ? existing.id : makeCustomId();
     store.saveCustomExercise(id, result.value);
+    // Editou um exercício que já existe: se ele foi entregue a alunos, a correção os alcança.
+    if (existing) pushExerciseUpdates().then((r) => toastExerciseUpdates(r, { quiet: true }));
     onSaved(id, customToExercise(store.getCustomExercises()[id]));
   });
 

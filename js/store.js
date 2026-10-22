@@ -218,7 +218,10 @@ export const store = {
     if (!rec || rec.deleted) return;
     const clean = String(text ?? '').trim().slice(0, max);
     if (clean) rec.note = clean; else delete rec.note;
-    rec.updatedAt = now();
+    // noteAt: carimbo só da observação (ver mergeExercises). Apagar também carimba, pra o "vazio"
+    // vencer uma observação mais velha em outro aparelho.
+    rec.noteAt = now();
+    rec.updatedAt = rec.noteAt;
     save();
   },
   // Lápide, não remoção: ver custom-exercises.js. Some do plano porque o id deixa de existir.

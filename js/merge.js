@@ -3,7 +3,8 @@
 //
 // Regras:
 //  - logs: cada exercício marcado (done) vale pelo carimbo de tempo mais novo; notas idem.
-//  - speeds, plans e exercises: vence o registro alterado por último (updatedAt).
+//  - speeds, plans e exercises: vence o registro alterado por último (updatedAt); só que, nos
+//    exercícios, a observação do aluno (note/noteAt) é escolhida à parte (ver mergeExercises).
 //  - plan (dentro de um log): foto do plano do dia, gravada uma vez no 1º toque e nunca mais
 //    mudada (ver store.js); os dois aparelhos calculam ela a partir do mesmo plano quase no
 //    mesmo instante, então não precisa de carimbo — só fica com quem já tiver uma.
@@ -49,6 +50,29 @@ export function mergeRecords(a = {}, b = {}) {
   return out;
 }
 
+// Exercícios: o registro inteiro vale pelo updatedAt mais novo, MAS a observação do aluno (`note`)
+// tem carimbo próprio (`noteAt`) e é escolhida à parte. Sem isso, uma correção do professor (que
+// atualiza o conteúdo da cópia do aluno) apagaria uma observação que o aluno acabou de escrever
+// e ainda não sincronizou. Registro de antes do `noteAt` conta a observação com o updatedAt dele.
+const noteStamp = (rec) => (rec && !rec.deleted ? rec.noteAt ?? (rec.note ? rec.updatedAt || 0 : 0) : 0);
+
+export function mergeExercises(a = {}, b = {}) {
+  const out = mergeRecords(a, b);
+  Object.keys(out).forEach((id) => {
+    const x = a[id];
+    const y = b[id];
+    const winner = out[id];
+    if (!x || !y || winner.deleted) return;
+    const nx = noteStamp(x);
+    const ny = noteStamp(y);
+    if (nx === ny) return;
+    const source = nx > ny ? x : y;
+    if (source.note) winner.note = source.note; else delete winner.note;
+    winner.noteAt = nx > ny ? nx : ny;
+  });
+  return out;
+}
+
 export function mergeData(local = {}, remote = {}) {
   const merged = {
     logs: mergeLogs(local.logs, remote.logs),
@@ -59,7 +83,7 @@ export function mergeData(local = {}, remote = {}) {
   // inclusive a lápide de um exercício apagado. A chave só entra quando existe algum: a linha de
   // quem nunca criou nada continua exatamente como era (sem escrita extra no servidor, e
   // sameData(merged, local) segue igual — store.snapshot() também omite a chave quando vazia).
-  const exercises = mergeRecords(local.exercises, remote.exercises);
+  const exercises = mergeExercises(local.exercises, remote.exercises);
   if (Object.keys(exercises).length) merged.exercises = exercises;
   return merged;
 }

@@ -2,8 +2,9 @@
 // instruções e minutos. Funções puras (sem navegador), testadas em tests/custom-exercises.test.mjs.
 //
 // Guardados em data.exercises (store.js), um registro por id:
-//   { id, title, text, min, bpm?, src?, note?, createdAt, updatedAt } — exercício (bpm: {start, goal},
-//        opcional; src: id de origem, se veio do professor; note: observação do aluno)
+//   { id, title, text, min, bpm?, src?, note?, noteAt?, createdAt, updatedAt } — exercício (bpm:
+//        {start, goal}, opcional; src: id de origem, se veio do professor; note/noteAt: observação do
+//        aluno e o carimbo dela, que o merge escolhe à parte — ver mergeExercises em merge.js)
 //   { id, deleted: true, updatedAt }                        — apagado (fica como "lápide")
 // A lápide é o que faz o apagar sincronizar: se só sumisse da lista, o outro aparelho ainda teria
 // o exercício e o merge (merge.js, vale o updatedAt mais novo por id) o traria de volta.
