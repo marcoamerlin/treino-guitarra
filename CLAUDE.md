@@ -377,6 +377,16 @@ Publicação (GitHub Pages) e Supabase: `docs/setup.md`.
 - `js/practice-timer.js`: cronômetro por exercício (quanto falta dos minutos reservados). Só um roda por vez;
   guarda por timestamp (funciona em segundo plano/tela bloqueada); reinicia a cada dia; não sincroniza (é
   controle da sessão, não histórico). Injeta storage/now() como o sync-core, para testar fora do navegador.
+- `js/back-guard.js` (pedido do usuário, 2026-10-24, num Xiaomi Poco com navegação por gestos):
+  o "voltar" do Android (deslizar da borda pro centro, ou o botão) fecha a janela de cima — folha
+  primeiro, depois o Braço — em vez de sair do app. O app é uma página só, então sem isso todo
+  "voltar" saía. Ao abrir a 1ª janela entra UMA entrada no histórico (`pushState`); o "voltar" a
+  consome (`popstate`) e fecha a de cima (se ainda sobrar outra, empurra de novo); fechar pelo ✕
+  devolve a entrada com `history.back()` (adiado, pra trocar de tela dentro da folha — fechar e
+  abrir na hora — não mexer no histórico). Sem janela aberta, "voltar" sai do app como qualquer
+  app Android (não há "deslize de novo para sair"). Ligado em `openSheet`/`closeSheet` e
+  `openScales`/`closeScales`; testes em `tests/back-guard.test.mjs` com um histórico de mentira, e
+  verificado no navegador com `history.back()`. Mesmo módulo na bateria.
 - `js/app.js`: interface. `sw.js` + `manifest.webmanifest`: PWA offline.
 
 ## Regras do domínio

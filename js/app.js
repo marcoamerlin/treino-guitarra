@@ -1,3 +1,4 @@
+import { createBackGuard } from './back-guard.js';
 import { WEEK } from './data/plans.js';
 import { EXERCISES, CATEGORIES } from './data/exercises.js';
 import {
@@ -110,6 +111,7 @@ function openSheet(node) {
   sheetBody.replaceChildren(node);
   sheet.classList.add('open');
   sheet.querySelector('.sheet').scrollTop = 0;
+  backGuard.opened();
 }
 
 function closeSheet() {
@@ -118,7 +120,18 @@ function closeSheet() {
   sheetRedrawers = [];
   sheetCleanups.forEach((fn) => fn());
   sheetCleanups = [];
+  backGuard.closed();
 }
+
+// "Voltar" do Android (gesto ou botão) fecha a janela de cima — folha primeiro, depois o Braço —
+// em vez de sair do app. Ver js/back-guard.js.
+const sheetIsOpen = () => sheet.classList.contains('open');
+const backGuard = createBackGuard({
+  history: window.history,
+  win: window,
+  isOpen: () => sheetIsOpen() || scalesOverlay.classList.contains('open'),
+  closeTop: () => (sheetIsOpen() ? closeSheet() : closeScales()),
+});
 
 sheet.addEventListener('click', (e) => {
   if (e.target === sheet || e.target.closest('#sheetClose')) closeSheet();
@@ -300,8 +313,8 @@ const scalesBody = $('#scalesBody');
 
 const BRACO_TABS = { scales: 'Escalas', chords: 'Acordes', intervals: 'Intervalos' };
 
-function openScales() { renderBraco(); scalesOverlay.classList.add('open'); }
-function closeScales() { scalesOverlay.classList.remove('open'); }
+function openScales() { renderBraco(); scalesOverlay.classList.add('open'); backGuard.opened(); }
+function closeScales() { scalesOverlay.classList.remove('open'); backGuard.closed(); }
 
 function renderBraco() {
   const tab = store.getPref('fbTab', 'scales');
