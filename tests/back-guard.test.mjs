@@ -2,85 +2,121 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBackGuard } from '../js/back-guard.js';
 
-// Histórico de mentira: pilha de entradas; back() dispara popstate (assíncrono no navegador,
-// aqui na hora de `flush()`), como o gesto "voltar" do Android.
+// Histórico de mentira: pilha de entradas acima da página do app. go(-n) dispara UM popstate
+// (assíncrono no navegador, aqui na hora de `flush()`), como no navegador de verdade.
 function setup() {
-  const entries = ['app'];
+  let ours = 0; // entradas acima da página do app
   let listener;
   const queue = [];
   const history = {
-    pushState(state) { entries.push(state); },
-    back() { queue.push(() => { entries.pop(); listener(); }); },
+    pushState() { ours += 1; },
+    go(n) { queue.push(() => { ours += n; listener(); }); },
   };
   const win = { addEventListener: (ev, fn) => { assert.equal(ev, 'popstate'); listener = fn; } };
-  const layers = []; // janelas abertas, a última por cima
+  const layers = []; // coisas abertas, a última por cima
   const deferred = [];
   const guard = createBackGuard({
     history, win,
-    isOpen: () => layers.length > 0,
+    countOpen: () => layers.length,
     closeTop: () => { layers.pop(); guard.closed(); },
     defer: (fn) => deferred.push(fn),
   });
-  const open = (name) => { layers.push(name); guard.opened(); };
-  const closeByX = () => { layers.pop(); guard.closed(); };
-  const flush = () => { while (deferred.length || queue.length) { deferred.splice(0).forEach((f) => f()); queue.splice(0).forEach((f) => f()); } };
-  // Gesto "voltar": se não há entrada nossa, o navegador sai do app (aqui: devolve 'saiu').
+  const flush = () => {
+    while (deferred.length || queue.length) {
+      deferred.splice(0).forEach((f) => f());
+      queue.splice(0).forEach((f) => f());
+    }
+  };
+  const open = (name) => { if (!layers.includes(name)) layers.push(name); guard.opened(); };
+  const close = (name) => { layers.splice(layers.indexOf(name), 1); guard.closed(); };
+  const closeAll = () => { layers.length = 0; guard.closed(); };
+  // Gesto "voltar": sem entrada nossa, o navegador sai do app.
   const swipeBack = () => {
-    if (entries.length === 1) return 'saiu';
-    entries.pop(); listener(); flush();
+    if (ours === 0) return 'saiu';
+    ours -= 1; listener(); flush();
     return 'ficou';
   };
-  return { entries, layers, open, closeByX, flush, swipeBack };
+  return { layers, open, close, closeAll, flush, swipeBack, entries: () => ours };
 }
 
 test('voltar com uma janela aberta fecha a janela e não sai do app', () => {
   const t = setup();
   t.open('metrônomo');
-  assert.equal(t.entries.length, 2);
   assert.equal(t.swipeBack(), 'ficou');
   assert.deepEqual(t.layers, []);
-  assert.equal(t.entries.length, 1); // a entrada foi consumida
   assert.equal(t.swipeBack(), 'saiu'); // na tela principal, voltar sai, como qualquer app
 });
 
-test('sem janela aberta, voltar sai do app (nada muda)', () => {
+test('sem nada aberto, voltar sai do app (nada muda)', () => {
+  assert.equal(setup().swipeBack(), 'saiu');
+});
+
+test('exercício do dia expandido: voltar fecha o exercício, não o app', () => {
   const t = setup();
+  t.open('exercício riff1');
+  assert.equal(t.swipeBack(), 'ficou');
+  assert.deepEqual(t.layers, []);
   assert.equal(t.swipeBack(), 'saiu');
 });
 
-test('fechar pelo ✕ devolve a entrada: o próximo voltar sai do app', () => {
+test('dois exercícios expandidos: cada voltar fecha um, o último aberto primeiro', () => {
+  const t = setup();
+  t.open('exercício A');
+  t.open('exercício B');
+  assert.equal(t.entries(), 2);
+  assert.equal(t.swipeBack(), 'ficou');
+  assert.deepEqual(t.layers, ['exercício A']);
+  assert.equal(t.swipeBack(), 'ficou');
+  assert.deepEqual(t.layers, []);
+  assert.equal(t.swipeBack(), 'saiu');
+});
+
+test('fechar pelo ✕ (ou tocando de novo) devolve a entrada: o próximo voltar sai do app', () => {
   const t = setup();
   t.open('afinador');
-  t.closeByX();
+  t.close('afinador');
   t.flush();
-  assert.equal(t.entries.length, 1);
+  assert.equal(t.entries(), 0);
+  assert.equal(t.swipeBack(), 'saiu');
+});
+
+test('fechar vários de uma vez (trocar de dia) devolve todas as entradas num passo só', () => {
+  const t = setup();
+  t.open('exercício A');
+  t.open('exercício B');
+  t.closeAll();
+  t.flush();
+  assert.equal(t.entries(), 0);
   assert.equal(t.swipeBack(), 'saiu');
 });
 
 test('trocar de tela dentro da folha (fecha e abre na hora) mantém uma única entrada', () => {
   const t = setup();
   t.open('biblioteca');
-  t.closeByX();
+  t.close('biblioteca');
   t.open('formulário');
   t.flush();
-  assert.equal(t.entries.length, 2);
+  assert.equal(t.entries(), 1);
   assert.equal(t.swipeBack(), 'ficou');
   assert.deepEqual(t.layers, []);
 });
 
-test('abrir de novo uma janela já aberta não empilha outra entrada', () => {
+test('abrir de novo o que já está aberto não empilha outra entrada', () => {
   const t = setup();
   t.open('conta');
   t.open('conta');
-  assert.equal(t.entries.length, 2);
+  assert.equal(t.entries(), 1);
 });
 
-test('folha aberta sobre o Braço: voltar fecha a folha, depois o Braço, depois sai', () => {
+test('folha sobre o Braço sobre um exercício: voltar fecha um de cada vez, depois sai', () => {
   const t = setup();
+  t.open('exercício');
   t.open('braço');
   t.open('acorde');
   assert.equal(t.swipeBack(), 'ficou');
-  assert.deepEqual(t.layers, ['braço']);
+  assert.deepEqual(t.layers, ['exercício', 'braço']);
+  assert.equal(t.swipeBack(), 'ficou');
+  assert.deepEqual(t.layers, ['exercício']);
   assert.equal(t.swipeBack(), 'ficou');
   assert.deepEqual(t.layers, []);
   assert.equal(t.swipeBack(), 'saiu');
